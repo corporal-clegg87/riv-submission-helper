@@ -60,5 +60,26 @@ python main.py process --email-file sample_return.eml
 python main.py status --assignment-code ENG7-0115
 ```
 
+## Web Interface
+
+Start the web server:
+```bash
+python server.py
+```
+
+Then open http://localhost:8000 in your browser to access the web interface.
+
+The web interface provides:
+- **Create Assignment**: Form to create new assignments
+- **Submit Work**: Form to submit assignments as a student
+- **Return Grade**: Form to return graded assignments as a teacher
+- **View Status**: Check assignment status and view all assignments
+
+## API Endpoints
+
+- `POST /api/process-email` - Process email commands
+- `GET /api/assignments` - List all assignments
+- `GET /api/assignments/{code}/status` - Get assignment status
+
 ## Next Steps
 This MVP validates the email-first approach. Next iterations will add Gmail API integration, scheduling, and admin UI.
