@@ -1,0 +1,185 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+header {
+    background: #2563eb;
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 10px 0;
+    font-size: 28px;
+}
+
+header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 15px 20px;
+    border: none;
+    background: #f8f9fa;
+    cursor: pointer;
+    font-size: 16px;
+    color: #495057;
+    transition: all 0.2s;
+}
+
+.tab-button:hover {
+    background: #dee2e6;
+    color: #212529;
+}
+
+.tab-button.active {
+    background: #ffffff;
+    border-bottom: 2px solid #2563eb;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.tab-content {
+    display: none;
+    padding: 30px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+h2 {
+    margin: 0 0 20px 0;
+    color: #2563eb;
+    font-size: 24px;
+}
+
+h3 {
+    margin: 20px 0 15px 0;
+    color: #374151;
+    font-size: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #374151;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+input:focus, textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+.result.success {
+    background: #d1fae5;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.result.error {
+    background: #fee2e2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.result.info {
+    background: #dbeafe;
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+}
+
+.assignment-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.assignment-code {
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.submission-item {
+    background: #f0f9ff;
+    border-left: 4px solid #0ea5e9;
+    padding: 10px 15px;
+    margin: 5px 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.on-time {
+    color: #059669;
+    font-weight: 600;
+}
+
+.late {
+    color: #dc2626;
+    font-weight: 600;
+}
