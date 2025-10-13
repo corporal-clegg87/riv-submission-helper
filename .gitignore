@@ -1,0 +1,27 @@
+# SSH Keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+github
+github.pub
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+riv-env/
+*.egg-info/
+dist/
+build/
+
+# Database
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+

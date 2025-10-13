@@ -38,6 +38,25 @@ Body:
 Grade: A-
 Feedback: Good work!
 
+### Environment Configuration
+
+For production deployment, set these environment variables:
+
+```bash
+# Environment (development or production)
+export APP_ENVIRONMENT=production
+
+# CORS allowed origins (comma-separated)
+export APP_CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+In production mode:
+- Error messages are sanitized to prevent information disclosure
+- CORS is restricted to specified origins
+- Detailed logs are written server-side only
+
+**Security Note:** Never commit SSH keys, API keys, or other sensitive files to the repository. The `.gitignore` file is configured to prevent common sensitive files from being committed.
+
 ## Testing
 
 Run the test suite:

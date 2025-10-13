@@ -30,7 +30,7 @@ def test_email_processing():
         )
         
         assert "Assignment 'Test Assignment' created" in response
-        assert "ENG7-0115" in response
+        assert "ENGLISH7-0115" in response
         
         # Test submission processing
         submission_email = "StudentID: STU001\nHere is my work."
@@ -39,7 +39,7 @@ def test_email_processing():
             email_content=submission_email,
             from_email="student@test.com",
             to_emails=["assignments@test.com"],
-            subject="SUBMIT ENG7-0115",
+            subject="SUBMIT ENGLISH7-0115",
             message_id="msg-124"
         )
         
@@ -56,7 +56,7 @@ def test_email_processing():
             email_content=return_email,
             from_email="teacher@test.com",
             to_emails=["assignments@test.com"],
-            subject="RETURN ENG7-0115 STU001",
+            subject="RETURN ENGLISH7-0115 STU001",
             message_id="msg-125"
         )
         

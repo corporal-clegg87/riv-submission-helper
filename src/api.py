@@ -1,13 +1,42 @@
+import os
+import logging
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
+from pydantic_settings import BaseSettings
 from typing import List, Optional
+import re
+from email_validator import validate_email, EmailNotValidError
 from .storage import Database
 from .processor import EmailProcessor
 from .models import Assignment, Submission
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class Settings(BaseSettings):
+    environment: str = Field(default="development")
+    cors_origins: str = Field(default="*")
+    
+    class Config:
+        env_prefix = "APP_"
+
+settings = Settings()
+
 app = FastAPI(title="RIV Assignment Helper API", version="1.0.0")
+
+# Configure CORS
+origins = settings.cors_origins.split(",") if settings.cors_origins != "*" else ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize database and processor
 db = Database()
@@ -19,6 +48,49 @@ class EmailRequest(BaseModel):
     from_email: str
     to_email: str
     message_id: str
+    
+    @field_validator('subject')
+    @classmethod
+    def validate_subject(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise ValueError('Subject cannot be empty')
+        if len(v) > 200:
+            raise ValueError('Subject must be less than 200 characters')
+        return v.strip()
+    
+    @field_validator('body')
+    @classmethod
+    def validate_body(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise ValueError('Body cannot be empty')
+        if len(v) > 5000:
+            raise ValueError('Body must be less than 5000 characters')
+        return v.strip()
+    
+    @field_validator('from_email')
+    @classmethod
+    def validate_from_email(cls, v):
+        try:
+            validation = validate_email(v, check_deliverability=False)
+            return validation.normalized
+        except EmailNotValidError as e:
+            raise ValueError(f'Invalid from_email: {str(e)}')
+    
+    @field_validator('to_email')
+    @classmethod
+    def validate_to_email(cls, v):
+        try:
+            validation = validate_email(v, check_deliverability=False)
+            return validation.normalized
+        except EmailNotValidError as e:
+            raise ValueError(f'Invalid to_email: {str(e)}')
+    
+    @field_validator('message_id')
+    @classmethod
+    def validate_message_id(cls, v):
+        if not v or '@' not in v:
+            raise ValueError('Invalid message_id format')
+        return v.strip()
 
 class AssignmentResponse(BaseModel):
     id: str
@@ -32,7 +104,12 @@ class AssignmentResponse(BaseModel):
 
 @app.post("/api/process-email")
 async def process_email_endpoint(request: EmailRequest):
-    """Process an email and return the response."""
+    """
+    Process an email and return the response.
+    
+    This endpoint handles ASSIGN, SUBMIT, and RETURN email commands.
+    All inputs are validated both client-side and server-side.
+    """
     try:
         response = processor.process_email(
             email_content=request.body,
@@ -42,8 +119,20 @@ async def process_email_endpoint(request: EmailRequest):
             message_id=request.message_id
         )
         return {"success": True, "response": response}
-    except Exception as e:
+    except ValueError as e:
+        # Validation errors from the processor
+        logger.warning(f"Validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Unexpected errors - log details but return generic message in production
+        logger.error(f"Internal error processing email: {str(e)}", exc_info=True)
+        
+        if settings.environment == "development":
+            detail = f"Internal server error: {str(e)}"
+        else:
+            detail = "An internal error occurred while processing your request"
+        
+        raise HTTPException(status_code=500, detail=detail)
 
 @app.get("/api/assignments")
 async def list_assignments_endpoint():
@@ -66,6 +155,10 @@ async def list_assignments_endpoint():
 @app.get("/api/assignments/{assignment_code}/status")
 async def get_assignment_status_endpoint(assignment_code: str):
     """Get status of a specific assignment."""
+    # Validate assignment code format
+    if not re.match(r'^[A-Z0-9]+-[A-Z0-9]+$', assignment_code):
+        raise HTTPException(status_code=400, detail="Invalid assignment code format. Use format like ENG7-0115")
+    
     assignment = db.get_assignment_by_code(assignment_code)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
