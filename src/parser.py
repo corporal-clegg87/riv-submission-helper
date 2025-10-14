@@ -4,9 +4,9 @@ from datetime import datetime
 from typing import Dict, Optional, Tuple
 from .models import Assignment
 
-def parse_assignment_email(email_body: str, subject: str) -> Optional[Assignment]:
-    """Parse ASSIGN email and return Assignment object or None if invalid."""
-    if not subject.upper().startswith('ASSIGN'):
+def parse_assignment_email(email_body: str, subject: str) -> Optional[Dict]:
+    """Parse ASSIGN email and return assignment data or None if invalid."""
+    if not subject.strip().upper() == 'ASSIGN':
         return None
     
     # Extract key:value pairs from body
@@ -39,17 +39,14 @@ def parse_assignment_email(email_body: str, subject: str) -> Optional[Assignment
     date_code = deadline_at.strftime('%m%d')
     code = f"{class_code}-{date_code}"
     
-    return Assignment(
-        id=str(uuid.uuid4()),
-        code=code,
-        title=fields['title'],
-        class_name=fields['class'],
-        deadline_at=deadline_at,
-        deadline_tz='CT',
-        instructions=fields.get('instructions', ''),
-        status='SCHEDULED',
-        created_at=datetime.utcnow()
-    )
+    return {
+        'code': code,
+        'title': fields['title'],
+        'class_name': fields['class'],
+        'deadline_at': deadline_at,
+        'instructions': fields.get('instructions', ''),
+        'rubric': fields.get('rubric', '')
+    }
 
 def parse_submission_email(email_body: str, subject: str) -> Optional[Tuple[str, str]]:
     """Parse SUBMIT email and return (assignment_code, student_id) or None if invalid."""
@@ -71,6 +68,34 @@ def parse_submission_email(email_body: str, subject: str) -> Optional[Tuple[str,
         return None
     
     return (assignment_code, student_id)
+
+def parse_grade_email(email_body: str, subject: str) -> Optional[Dict]:
+    """Parse GRADE email and return grade data or None if invalid."""
+    match = re.match(r'GRADE\s+(\S+)\s+(\S+)', subject.upper())
+    if not match:
+        return None
+    
+    assignment_code = match.group(1)
+    student_id = match.group(2)
+    
+    # Extract grade and feedback from body
+    grade_data = {}
+    for line in email_body.split('\n'):
+        line = line.strip()
+        if ':' in line:
+            key, value = line.split(':', 1)
+            grade_data[key.strip().lower()] = value.strip()
+    
+    # Validate required fields
+    if 'grade' not in grade_data:
+        return None
+    
+    return {
+        'assignment_code': assignment_code,
+        'student_id': student_id,
+        'grade_value': grade_data['grade'],
+        'feedback_text': grade_data.get('feedback', '')
+    }
 
 def parse_return_email(email_body: str, subject: str) -> Optional[Tuple[str, str, Dict]]:
     """Parse RETURN email and return (assignment_code, student_id, grade_data) or None."""
