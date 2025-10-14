@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment System - Test Interface</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Email-First Assignment System</h1>
+            <p>Test Interface for MVP</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('createTab')">Create Assignment</button>
+            <button class="tab-button" onclick="showTab('submitTab')">Submit Work</button>
+            <button class="tab-button" onclick="showTab('returnTab')">Return Grade</button>
+            <button class="tab-button" onclick="showTab('statusTab')">Check Status</button>
+            <button class="tab-button" onclick="showTab('allTab')">All Assignments</button>
+        </div>
+        
+        <!-- Create Assignment Tab -->
+        <div id="createTab" class="tab-content active">
+            <h2>Create Assignment</h2>
+            <form id="assignForm">
+                <div class="form-group">
+                    <label for="assignTitle">Assignment Title *</label>
+                    <input type="text" id="assignTitle" placeholder="e.g., Essay on Climate Change" required>
+                </div>
+                <div class="form-group">
+                    <label for="assignClass">Class Name *</label>
+                    <input type="text" id="assignClass" placeholder="e.g., English 7" required>
+                </div>
+                <div class="form-group">
+                    <label for="assignDeadline">Deadline Date *</label>
+                    <input type="date" id="assignDeadline" required>
+                </div>
+                <div class="form-group">
+                    <label for="assignInstructions">Instructions (optional)</label>
+                    <textarea id="assignInstructions" rows="4" placeholder="Enter assignment instructions..."></textarea>
+                </div>
+                <button type="submit">Create Assignment</button>
+            </form>
+            <div id="assignResult" class="result"></div>
+        </div>
+        
+        <!-- Submit Work Tab -->
+        <div id="submitTab" class="tab-content">
+            <h2>Submit Work</h2>
+            <form id="submitForm">
+                <div class="form-group">
+                    <label for="submitCode">Assignment Code *</label>
+                    <input type="text" id="submitCode" placeholder="e.g., ENG7-0115" required>
+                </div>
+                <div class="form-group">
+                    <label for="submitStudentId">Student ID *</label>
+                    <input type="text" id="submitStudentId" placeholder="e.g., STU001" required>
+                </div>
+                <button type="submit">Submit Assignment</button>
+            </form>
+            <div id="submitResult" class="result"></div>
+        </div>
+        
+        <!-- Return Grade Tab -->
+        <div id="returnTab" class="tab-content">
+            <h2>Return Grade</h2>
+            <form id="returnForm">
+                <div class="form-group">
+                    <label for="returnCode">Assignment Code *</label>
+                    <input type="text" id="returnCode" placeholder="e.g., ENG7-0115" required>
+                </div>
+                <div class="form-group">
+                    <label for="returnStudentId">Student ID *</label>
+                    <input type="text" id="returnStudentId" placeholder="e.g., STU001" required>
+                </div>
+                <div class="form-group">
+                    <label for="returnGrade">Grade *</label>
+                    <input type="text" id="returnGrade" placeholder="e.g., A-, 95%, Pass" required>
+                </div>
+                <div class="form-group">
+                    <label for="returnFeedback">Feedback (optional)</label>
+                    <textarea id="returnFeedback" rows="4" placeholder="Enter feedback for the student..."></textarea>
+                </div>
+                <button type="submit">Submit Grade</button>
+            </form>
+            <div id="returnResult" class="result"></div>
+        </div>
+        
+        <!-- Check Status Tab -->
+        <div id="statusTab" class="tab-content">
+            <h2>Assignment Status</h2>
+            <div class="form-group">
+                <label for="statusCode">Assignment Code</label>
+                <input type="text" id="statusCode" placeholder="e.g., ENG7-0115">
+            </div>
+            <button onclick="loadStatus()">Check Status</button>
+            <div id="statusResult" class="result"></div>
+        </div>
+        
+        <!-- All Assignments Tab -->
+        <div id="allTab" class="tab-content">
+            <h2>All Assignments</h2>
+            <button onclick="loadAllAssignments()">Refresh List</button>
+            <div id="allAssignments" class="result"></div>
+        </div>
+    </div>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>
+

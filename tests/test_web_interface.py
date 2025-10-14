@@ -11,7 +11,7 @@ def test_web_interface_homepage():
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "RIV Assignment Helper" in response.text
+    assert "Email-First Assignment System" in response.text
     assert "Create Assignment" in response.text
 
 def test_static_files():
@@ -63,9 +63,11 @@ def test_process_assignment_with_validation():
     """Test processing assignment with proper validation."""
     import time
     unique_id = str(int(time.time() * 1000))[-6:]  # Use timestamp for uniqueness
+    # Use a different date to avoid code conflicts
+    test_date = "2025-02-15"
     response = client.post("/api/process-email", json={
         "subject": f"ASSIGN Test Assignment {unique_id}",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math{unique_id}\nDeadline: 2025-01-20 23:59 CT\nInstructions: Complete problems 1-10",
+        "body": f"Title: Math Homework {unique_id}\nClass: Math{unique_id}\nDeadline: {test_date} 23:59 CT\nInstructions: Complete problems 1-10",
         "from_email": "teacher@example.com",
         "to_email": "assignments@example.com",
         "message_id": f"test{unique_id}@example.com"
