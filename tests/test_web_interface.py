@@ -1,4 +1,5 @@
 import pytest
+import time
 import tempfile
 import os
 from fastapi.testclient import TestClient
@@ -61,7 +62,6 @@ def test_assignment_code_validation():
 
 def test_process_assignment_with_validation():
     """Test processing assignment with proper validation."""
-    import time
     unique_id = str(int(time.time() * 1000))[-6:]  # Use timestamp for uniqueness
     # Use a different date to avoid code conflicts
     test_date = "2025-02-15"
