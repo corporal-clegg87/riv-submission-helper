@@ -100,5 +100,14 @@ The web interface provides:
 - `GET /api/assignments` - List all assignments
 - `GET /api/assignments/{code}/status` - Get assignment status
 
+## Project Documentation
+
+See `project-plan.md` for the complete project plan including:
+- 4-week MVP implementation roadmap
+- Architecture decisions and tech stack
+- Email contracts and data models
+- Security requirements and testing strategy
+- Future phases and technical debt tracking
+
 ## Next Steps
-This MVP validates the email-first approach. Next iterations will add Gmail API integration, scheduling, and admin UI.
+This MVP validates the email-first approach. Follow the roadmap in `project-plan.md` for Gmail API integration, scheduling, and admin UI.
