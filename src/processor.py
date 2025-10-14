@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from .parser import parse_assignment_email, parse_submission_email, parse_grade_email, parse_return_email
 from .storage import Database
@@ -119,7 +119,7 @@ class EmailProcessor:
         
         # Determine if on-time (including grace period)
         now = datetime.utcnow()
-        grace_deadline = assignment.deadline_at.replace(day=assignment.deadline_at.day + assignment.grace_days)
+        grace_deadline = assignment.deadline_at + timedelta(days=assignment.grace_days)
         on_time = now <= assignment.deadline_at
         
         # Create submission

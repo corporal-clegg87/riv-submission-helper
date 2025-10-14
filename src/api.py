@@ -154,19 +154,23 @@ async def process_email_endpoint(request: EmailRequest):
 async def list_assignments_endpoint():
     """List all assignments."""
     assignments = db.get_all_assignments()
-    return [
-        AssignmentResponse(
+    result = []
+    for assignment in assignments:
+        # Get class name from class_id
+        class_obj = db.get_class_by_id(assignment.class_id)
+        class_name = class_obj.name if class_obj else "Unknown Class"
+        
+        result.append(AssignmentResponse(
             id=assignment.id,
             code=assignment.code,
             title=assignment.title,
-            class_name=assignment.class_name,
+            class_name=class_name,
             deadline_at=assignment.deadline_at.isoformat(),
             deadline_tz=assignment.deadline_tz,
             instructions=assignment.instructions,
             status=assignment.status
-        )
-        for assignment in assignments
-    ]
+        ))
+    return result
 
 @app.get("/api/assignments/{assignment_code}/status")
 async def get_assignment_status_endpoint(assignment_code: str):
@@ -181,12 +185,16 @@ async def get_assignment_status_endpoint(assignment_code: str):
     
     submissions = db.get_submissions_by_assignment(assignment.id)
     
+    # Get class name from class_id
+    class_obj = db.get_class_by_id(assignment.class_id)
+    class_name = class_obj.name if class_obj else "Unknown Class"
+    
     return {
         "assignment": AssignmentResponse(
             id=assignment.id,
             code=assignment.code,
             title=assignment.title,
-            class_name=assignment.class_name,
+            class_name=class_name,
             deadline_at=assignment.deadline_at.isoformat(),
             deadline_tz=assignment.deadline_tz,
             instructions=assignment.instructions,

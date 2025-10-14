@@ -13,7 +13,8 @@ from datetime import datetime
 class Database:
     def __init__(self, db_url: Optional[str] = None):
         if db_url is None:
-            db_url = os.getenv('DATABASE_URL', 'postgresql://localhost/riv_assignments')
+            # Default to SQLite for development, PostgreSQL for production
+            db_url = os.getenv('DATABASE_URL', 'sqlite:///assignments.db')
         self.engine = create_engine(db_url)
         self.SessionLocal = sessionmaker(bind=self.engine)
         
@@ -65,12 +66,14 @@ class Database:
                 Assignment(
                     id=assignment.id,
                     code=assignment.code,
+                    class_id=assignment.class_id,
                     title=assignment.title,
-                    class_name=assignment.class_name,
+                    instructions=assignment.instructions,
                     deadline_at=assignment.deadline_at,
                     deadline_tz=assignment.deadline_tz,
-                    instructions=assignment.instructions,
+                    created_by_teacher_id=assignment.created_by_teacher_id,
                     status=assignment.status,
+                    grace_days=assignment.grace_days,
                     created_at=assignment.created_at
                 )
                 for assignment in db_assignments
@@ -219,6 +222,21 @@ class Database:
     def get_class_by_name(self, name: str) -> Optional[Class]:
         with self.SessionLocal() as session:
             db_class = session.query(ClassDB).filter_by(name=name).first()
+            if not db_class:
+                return None
+            return Class(
+                id=db_class.id,
+                term_id=db_class.term_id,
+                name=db_class.name,
+                subject=db_class.subject,
+                teacher_id=db_class.teacher_id,
+                roster_version=db_class.roster_version,
+                status=db_class.status
+            )
+
+    def get_class_by_id(self, class_id: str) -> Optional[Class]:
+        with self.SessionLocal() as session:
+            db_class = session.query(ClassDB).filter_by(id=class_id).first()
             if not db_class:
                 return None
             return Class(

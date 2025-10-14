@@ -45,23 +45,29 @@ pip install -r requirements.txt
 
 ### 2. Database Setup
 
-#### Option A: Local PostgreSQL
+#### Development: SQLite (Default)
+```bash
+# No setup required - uses SQLite by default
+# Just run the application
+```
+
+#### Development: Local PostgreSQL
 ```bash
 # Install PostgreSQL (macOS)
 brew install postgresql
 brew services start postgresql
 
-# Create database
-createdb riv_assignments
+# Create development database
+createdb riv_assignments_dev
 
 # Set environment variable
-export DATABASE_URL="postgresql://username:password@localhost:5432/riv_assignments"
+export DATABASE_URL="postgresql://username:password@localhost:5432/riv_assignments_dev"
 ```
 
-#### Option B: Cloud SQL (Production)
+#### Production: Cloud SQL
 ```bash
 # Set Cloud SQL connection string
-export DATABASE_URL="postgresql://user:pass@/riv_assignments?host=/cloudsql/project:region:instance"
+export DATABASE_URL="postgresql://user:pass@/riv_assignments_prod?host=/cloudsql/project:region:instance"
 ```
 
 ### 3. Run Migrations
@@ -71,10 +77,16 @@ alembic upgrade head
 ```
 
 ### 4. Seed Data (Development)
-```python
+```bash
 # Create sample data for testing
 python scripts/seed_data.py
 ```
+
+This creates:
+- 3 teachers with authorized emails
+- 5 students with IDs STU001-STU005  
+- 3 classes: English 7, Math 7, Science 7
+- All students enrolled in all classes
 
 ### 5. Start Application
 ```bash
