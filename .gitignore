@@ -25,6 +25,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+venv/
 riv-env/
 test-env/
 *-env/
