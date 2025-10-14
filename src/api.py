@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -12,6 +12,8 @@ from email_validator import validate_email, EmailNotValidError
 from .storage import Database
 from .processor import EmailProcessor
 from .models import Assignment, Submission
+from .gmail_client import GmailClient
+from .gmail_ingestion import GmailIngestionService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +43,20 @@ app.add_middleware(
 # Initialize database and processor
 db = Database()
 processor = EmailProcessor(db)
+
+# Initialize Gmail client and ingestion service (if credentials are available)
+gmail_client = None
+ingestion_service = None
+
+try:
+    if os.getenv('GOOGLE_APPLICATION_CREDENTIALS') and os.getenv('GMAIL_USER_EMAIL'):
+        gmail_client = GmailClient()
+        ingestion_service = GmailIngestionService(gmail_client, db, processor)
+        logger.info("Gmail ingestion service initialized")
+    else:
+        logger.info("Gmail ingestion not configured (missing credentials)")
+except Exception as e:
+    logger.warning(f"Could not initialize Gmail client: {e}")
 
 class EmailRequest(BaseModel):
     subject: str
@@ -189,6 +205,44 @@ async def get_assignment_status_endpoint(assignment_code: str):
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.post("/api/gmail-webhook")
+async def gmail_webhook(request: Request):
+    """
+    Webhook endpoint for Gmail Pub/Sub push notifications.
+    
+    This endpoint is called by Google Cloud Pub/Sub when new emails arrive.
+    It processes the notification and ingests the email.
+    """
+    if not ingestion_service:
+        raise HTTPException(
+            status_code=503,
+            detail="Gmail ingestion service not configured"
+        )
+    
+    try:
+        # Parse Pub/Sub message
+        body = await request.json()
+        
+        logger.info(f"Received Gmail webhook: {body}")
+        
+        # Process the notification
+        result = ingestion_service.handle_pubsub_notification(body)
+        
+        return {
+            "status": "ok",
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing Gmail webhook: {e}", exc_info=True)
+        
+        if settings.environment == "development":
+            detail = f"Webhook error: {str(e)}"
+        else:
+            detail = "Error processing notification"
+        
+        raise HTTPException(status_code=500, detail=detail)
 
 @app.get("/")
 async def serve_index():
