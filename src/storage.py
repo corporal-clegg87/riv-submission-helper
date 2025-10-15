@@ -15,12 +15,20 @@ class Database:
         if db_url is None:
             # Default to SQLite for development, PostgreSQL for production
             db_url = os.getenv('DATABASE_URL', 'sqlite:///assignments.db')
-        self.engine = create_engine(db_url)
+        
+        try:
+            self.engine = create_engine(db_url)
+        except Exception as e:
+            raise ConnectionError(f"Failed to create database engine: {str(e)}. Check DATABASE_URL configuration.") from e
+        
         self.SessionLocal = sessionmaker(bind=self.engine)
         
-        # Create tables
+        # Create tables with error handling
         from .models import Base
-        Base.metadata.create_all(self.engine)
+        try:
+            Base.metadata.create_all(self.engine)
+        except Exception as e:
+            raise ConnectionError(f"Failed to create database tables: {str(e)}. Ensure database is accessible.") from e
     
     def save_assignment(self, assignment: Assignment) -> None:
         with self.SessionLocal() as session:
@@ -311,3 +319,67 @@ class Database:
                 active=True
             ).first()
             return enrollment is not None
+
+    def get_all_assignments_with_classes(self) -> List[tuple[Assignment, Optional[str]]]:
+        """Get all assignments with their class names in a single query."""
+        with self.SessionLocal() as session:
+            results = session.query(AssignmentDB, ClassDB.name).outerjoin(
+                ClassDB, AssignmentDB.class_id == ClassDB.id
+            ).all()
+            
+            return [
+                (
+                    Assignment(
+                        id=assignment.id,
+                        code=assignment.code,
+                        class_id=assignment.class_id,
+                        title=assignment.title,
+                        instructions=assignment.instructions,
+                        deadline_at=assignment.deadline_at,
+                        deadline_tz=assignment.deadline_tz,
+                        created_by_teacher_id=assignment.created_by_teacher_id,
+                        status=assignment.status,
+                        grace_days=assignment.grace_days,
+                        created_at=assignment.created_at
+                    ),
+                    class_name
+                )
+                for assignment, class_name in results
+            ]
+    
+    def get_assignment_with_class_by_code(self, code: str) -> Optional[tuple[Assignment, Optional[str]]]:
+        """Get assignment with class name in a single query."""
+        with self.SessionLocal() as session:
+            result = session.query(AssignmentDB, ClassDB.name).outerjoin(
+                ClassDB, AssignmentDB.class_id == ClassDB.id
+            ).filter(AssignmentDB.code == code).first()
+            
+            if not result:
+                return None
+            
+            assignment, class_name = result
+            return (
+                Assignment(
+                    id=assignment.id,
+                    code=assignment.code,
+                    class_id=assignment.class_id,
+                    title=assignment.title,
+                    instructions=assignment.instructions,
+                    deadline_at=assignment.deadline_at,
+                    deadline_tz=assignment.deadline_tz,
+                    created_by_teacher_id=assignment.created_by_teacher_id,
+                    status=assignment.status,
+                    grace_days=assignment.grace_days,
+                    created_at=assignment.created_at
+                ),
+                class_name
+            )
+
+    def test_connection(self) -> bool:
+        """Test database connection by executing a simple query."""
+        try:
+            with self.SessionLocal() as session:
+                session.execute(text("SELECT 1"))
+                return True
+        except Exception:
+            return False

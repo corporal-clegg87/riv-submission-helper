@@ -2,11 +2,11 @@ from datetime import datetime
 from typing import Optional, List
 from enum import Enum
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, ForeignKey, Index
+from sqlalchemy.orm import relationship, DeclarativeBase
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class TermName(str, Enum):
     SPRING = "SPRING"
@@ -164,6 +164,7 @@ class TeacherDB(Base):
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     status = Column(String, nullable=False, default='ACTIVE')
+    __table_args__ = (Index('idx_teacher_email', 'email'),)
 
 class StudentDB(Base):
     __tablename__ = 'students'
@@ -174,6 +175,7 @@ class StudentDB(Base):
     last_name = Column(String, nullable=False)
     email = Column(String, nullable=True)
     status = Column(String, nullable=False, default='ACTIVE')
+    __table_args__ = (Index('idx_student_id', 'student_id'),)
 
 class ParentDB(Base):
     __tablename__ = 'parents'
@@ -194,6 +196,7 @@ class ClassDB(Base):
     teacher_id = Column(String, ForeignKey('teachers.id'), nullable=False)
     roster_version = Column(Integer, nullable=False, default=1)
     status = Column(String, nullable=False, default='ACTIVE')
+    __table_args__ = (Index('idx_class_name', 'name'),)
 
 class EnrollmentDB(Base):
     __tablename__ = 'enrollments'
@@ -205,3 +208,4 @@ class EnrollmentDB(Base):
     active = Column(Boolean, nullable=False, default=True)
     joined_at = Column(DateTime, nullable=False)
     left_at = Column(DateTime, nullable=True)
+    __table_args__ = (Index('idx_enrollment_lookup', 'student_id', 'class_id', 'active'),)

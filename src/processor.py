@@ -3,11 +3,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 from .parser import parse_assignment_email, parse_submission_email, parse_grade_email, parse_return_email
 from .storage import Database
-from .models import Assignment, Submission, Grade, EmailMessage
+from .models import Assignment, Submission, Grade, EmailMessage, Teacher, Class
 
 class EmailProcessor:
     def __init__(self, db: Database):
         self.db = db
+        self._cache = {}  # Simple session cache for email processing
     
     def process_email(self, email_content: str, from_email: str, to_emails: list, subject: str, message_id: str) -> str:
         """Process incoming email and return response message."""
@@ -48,16 +49,29 @@ class EmailProcessor:
         self.db.save_email_message(email_msg)
         return "Unknown command. Please use ASSIGN, SUBMIT, or GRADE format."
     
+    def _validate_teacher_authorization(self, email: str) -> Optional[Teacher]:
+        """Validate teacher is authorized. Returns Teacher or None."""
+        if email not in self._cache:
+            self._cache[email] = self.db.get_teacher_by_email(email)
+        return self._cache[email]
+    
+    def _validate_class_exists(self, class_name: str) -> Optional[Class]:
+        """Validate class exists. Returns Class or None."""
+        cache_key = f"class_{class_name}"
+        if cache_key not in self._cache:
+            self._cache[cache_key] = self.db.get_class_by_name(class_name)
+        return self._cache[cache_key]
+    
     def _handle_assignment(self, assignment_data: dict, email_msg: EmailMessage) -> str:
         # Validate teacher is whitelisted
-        teacher = self.db.get_teacher_by_email(email_msg.from_email)
+        teacher = self._validate_teacher_authorization(email_msg.from_email)
         if not teacher:
             email_msg.parse_result = 'TEACHER_NOT_WHITELISTED'
             self.db.save_email_message(email_msg)
             return f"Error: Email {email_msg.from_email} is not authorized to create assignments."
         
         # Validate class exists
-        class_obj = self.db.get_class_by_name(assignment_data['class_name'])
+        class_obj = self._validate_class_exists(assignment_data['class_name'])
         if not class_obj:
             email_msg.parse_result = 'CLASS_NOT_FOUND'
             self.db.save_email_message(email_msg)
@@ -145,7 +159,7 @@ class EmailProcessor:
         student_id = grade_data['student_id']
         
         # Validate teacher is whitelisted
-        teacher = self.db.get_teacher_by_email(email_msg.from_email)
+        teacher = self._validate_teacher_authorization(email_msg.from_email)
         if not teacher:
             email_msg.parse_result = 'TEACHER_NOT_WHITELISTED'
             self.db.save_email_message(email_msg)

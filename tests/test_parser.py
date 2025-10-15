@@ -4,7 +4,7 @@ from src.parser import parse_assignment_email, parse_submission_email, parse_ret
 
 def test_parse_assignment_valid():
     """Test valid assignment email parsing."""
-    subject = "ASSIGN New Essay"
+    subject = "ASSIGN"
     body = """
     Title: Essay on Climate Change
     Class: English 7
@@ -12,12 +12,12 @@ def test_parse_assignment_valid():
     Instructions: Write 500 words on climate change impacts.
     """
     
-    assignment = parse_assignment_email(body, subject)
-    assert assignment is not None
-    assert assignment.title == "Essay on Climate Change"
-    assert assignment.class_name == "English 7"
-    assert assignment.deadline_at == datetime(2025, 1, 15, 23, 59)
-    assert assignment.code.startswith("ENGLISH7")
+    assignment_data = parse_assignment_email(body, subject)
+    assert assignment_data is not None
+    assert assignment_data['title'] == "Essay on Climate Change"
+    assert assignment_data['class_name'] == "English 7"
+    assert assignment_data['deadline_at'] == datetime(2025, 1, 15, 23, 59)
+    assert assignment_data['code'].startswith("ENGLISH7")
 
 def test_parse_assignment_invalid():
     """Test invalid assignment email parsing."""

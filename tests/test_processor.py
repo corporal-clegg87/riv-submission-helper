@@ -6,17 +6,16 @@ from src.storage import Database
 from src.processor import EmailProcessor
 from src.models import Student, Teacher, Class, Term, Parent, Enrollment
 
-def test_email_processing():
-    """Test end-to-end email processing."""
-    # Create temporary database
+@pytest.fixture
+def test_database_with_data():
+    """Fixture providing a database with test data."""
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = f"sqlite:///{tmp.name}"
     
     try:
         db = Database(db_path)
-        processor = EmailProcessor(db)
         
-        # Set up supporting data first
+        # Set up supporting data
         term = Term(
             id="term-1",
             name="FALL",
@@ -65,57 +64,62 @@ def test_email_processing():
         )
         db.save_enrollment(enrollment)
         
-        # Test assignment creation
-        assignment_email = """
-        Title: Test Assignment
-        Class: English 7
-        Deadline: 2025-01-15 23:59 CT
-        """
-        
-        response = processor.process_email(
-            email_content=assignment_email,
-            from_email="teacher@test.com",
-            to_emails=["assignments@test.com"],
-            subject="ASSIGN",
-            message_id="msg-123"
-        )
-        
-        assert "Assignment 'Test Assignment' created successfully" in response
-        assert "ENGLISH7-0115" in response
-        
-        # Test submission processing
-        submission_email = "StudentID: STU001\nHere is my work."
-        
-        response = processor.process_email(
-            email_content=submission_email,
-            from_email="student@test.com",
-            to_emails=["assignments@test.com"],
-            subject="SUBMIT ENGLISH7-0115",
-            message_id="msg-124"
-        )
-        
-        assert "Submission received" in response
-        assert "STU001" in response
-        
-        # Test grade processing
-        grade_email = """
-        Grade: A-
-        Feedback: Good work!
-        """
-        
-        response = processor.process_email(
-            email_content=grade_email,
-            from_email="teacher@test.com",
-            to_emails=["assignments@test.com"],
-            subject="GRADE ENGLISH7-0115 STU001",
-            message_id="msg-125"
-        )
-        
-        assert "Grade recorded" in response
-        assert "STU001" in response
-        assert "A-" in response
-        
+        yield db
     finally:
-        # Clean up
         if os.path.exists(db_path.replace("sqlite:///", "")):
             os.unlink(db_path.replace("sqlite:///", ""))
+
+def test_email_processing(test_database_with_data):
+    """Test end-to-end email processing."""
+    db = test_database_with_data
+    processor = EmailProcessor(db)
+    
+    # Test assignment creation
+    assignment_email = """
+    Title: Test Assignment
+    Class: English 7
+    Deadline: 2025-01-15 23:59 CT
+    """
+    
+    response = processor.process_email(
+        email_content=assignment_email,
+        from_email="teacher@test.com",
+        to_emails=["assignments@test.com"],
+        subject="ASSIGN",
+        message_id="msg-123"
+    )
+    
+    assert "Assignment 'Test Assignment' created successfully" in response
+    assert "ENGLISH7-0115" in response
+    
+    # Test submission processing
+    submission_email = "StudentID: STU001\nHere is my work."
+    
+    response = processor.process_email(
+        email_content=submission_email,
+        from_email="student@test.com",
+        to_emails=["assignments@test.com"],
+        subject="SUBMIT ENGLISH7-0115",
+        message_id="msg-124"
+    )
+    
+    assert "Submission received" in response
+    assert "STU001" in response
+    
+    # Test grade processing
+    grade_email = """
+    Grade: A-
+    Feedback: Good work!
+    """
+    
+    response = processor.process_email(
+        email_content=grade_email,
+        from_email="teacher@test.com",
+        to_emails=["assignments@test.com"],
+        subject="GRADE ENGLISH7-0115 STU001",
+        message_id="msg-125"
+    )
+    
+    assert "Grade recorded" in response
+    assert "STU001" in response
+    assert "A-" in response

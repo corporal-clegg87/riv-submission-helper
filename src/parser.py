@@ -6,7 +6,7 @@ from .models import Assignment
 
 def parse_assignment_email(email_body: str, subject: str) -> Optional[Dict]:
     """Parse ASSIGN email and return assignment data or None if invalid."""
-    if not subject.strip().upper() == 'ASSIGN':
+    if not subject.strip().upper().startswith('ASSIGN'):
         return None
     
     # Extract key:value pairs from body

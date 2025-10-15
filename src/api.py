@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -153,18 +154,14 @@ async def process_email_endpoint(request: EmailRequest):
 @app.get("/api/assignments")
 async def list_assignments_endpoint():
     """List all assignments."""
-    assignments = db.get_all_assignments()
+    assignments_with_classes = db.get_all_assignments_with_classes()
     result = []
-    for assignment in assignments:
-        # Get class name from class_id
-        class_obj = db.get_class_by_id(assignment.class_id)
-        class_name = class_obj.name if class_obj else "Unknown Class"
-        
+    for assignment, class_name in assignments_with_classes:
         result.append(AssignmentResponse(
             id=assignment.id,
             code=assignment.code,
             title=assignment.title,
-            class_name=class_name,
+            class_name=class_name or "Unknown Class",
             deadline_at=assignment.deadline_at.isoformat(),
             deadline_tz=assignment.deadline_tz,
             instructions=assignment.instructions,
@@ -179,22 +176,19 @@ async def get_assignment_status_endpoint(assignment_code: str):
     if not re.match(r'^[A-Z0-9]+-[A-Z0-9]+$', assignment_code):
         raise HTTPException(status_code=400, detail="Invalid assignment code format. Use format like ENG7-0115")
     
-    assignment = db.get_assignment_by_code(assignment_code)
-    if not assignment:
+    result = db.get_assignment_with_class_by_code(assignment_code)
+    if not result:
         raise HTTPException(status_code=404, detail="Assignment not found")
     
+    assignment, class_name = result
     submissions = db.get_submissions_by_assignment(assignment.id)
-    
-    # Get class name from class_id
-    class_obj = db.get_class_by_id(assignment.class_id)
-    class_name = class_obj.name if class_obj else "Unknown Class"
     
     return {
         "assignment": AssignmentResponse(
             id=assignment.id,
             code=assignment.code,
             title=assignment.title,
-            class_name=class_name,
+            class_name=class_name or "Unknown Class",
             deadline_at=assignment.deadline_at.isoformat(),
             deadline_tz=assignment.deadline_tz,
             instructions=assignment.instructions,
@@ -251,6 +245,17 @@ async def gmail_webhook(request: Request):
             detail = "Error processing notification"
         
         raise HTTPException(status_code=500, detail=detail)
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Cloud Run."""
+    try:
+        # Test database connection
+        db.test_connection()
+        return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unhealthy")
 
 @app.get("/")
 async def serve_index():
