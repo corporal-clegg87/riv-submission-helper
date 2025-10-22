@@ -17,6 +17,13 @@ from .models import Assignment, Submission
 from .gmail_client import GmailClient
 from .gmail_ingestion import GmailIngestionService
 
+# Secret Manager imports
+try:
+    from google.cloud import secretmanager
+    SECRET_MANAGER_AVAILABLE = True
+except ImportError:
+    SECRET_MANAGER_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,13 +39,50 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# Secret Manager client
+secret_client = None
+if SECRET_MANAGER_AVAILABLE:
+    try:
+        secret_client = secretmanager.SecretManagerServiceClient()
+    except Exception as e:
+        logger.warning(f"Failed to initialize Secret Manager client: {e}")
+
+def get_secret_manager_credentials():
+    """Get credentials from Secret Manager or environment variables."""
+    # Check if we're in production (Cloud Run) with Secret Manager available
+    if secret_client and os.getenv('GCP_PROJECT_ID'):
+        try:
+            project_id = os.getenv('GCP_PROJECT_ID')
+            
+            # Get username from Secret Manager
+            username_secret_name = f"projects/{project_id}/secrets/riv-basic-auth-user/versions/latest"
+            username_response = secret_client.access_secret_version(request={"name": username_secret_name})
+            username = username_response.payload.data.decode("UTF-8")
+            
+            # Get password from Secret Manager
+            password_secret_name = f"projects/{project_id}/secrets/riv-basic-auth-pass/versions/latest"
+            password_response = secret_client.access_secret_version(request={"name": password_secret_name})
+            password = password_response.payload.data.decode("UTF-8")
+            
+            logger.info("Using Secret Manager credentials")
+            return username, password
+            
+        except Exception as e:
+            logger.warning(f"Failed to get credentials from Secret Manager: {e}")
+            # Fallback to environment variables
+            pass
+    
+    # Use environment variables (for local development or fallback)
+    logger.info("Using environment variable credentials")
+    return settings.basic_auth_user, settings.basic_auth_pass
+
 # Basic authentication
 security = HTTPBasic()
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify basic authentication credentials."""
-    correct_username = settings.basic_auth_user
-    correct_password = settings.basic_auth_pass
+    # Get credentials from Secret Manager or environment
+    correct_username, correct_password = get_secret_manager_credentials()
     
     if credentials.username != correct_username or credentials.password != correct_password:
         raise HTTPException(
