@@ -94,12 +94,12 @@ def test_process_assignment_email():
     timestamp = int(time.time())
     unique_date = f"2025-{timestamp % 12 + 1:02d}-{timestamp % 28 + 1:02d}"
     response = client.post("/api/process-email", json={
-        "subject": "ASSIGN",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {unique_date} 23:59 CT\nInstructions: Complete problems 1-10",
-        "from_email": "teacher@rivendell-academy.co.uk",
-        "to_email": "assignments@example.com",
-        "message_id": f"test{unique_id}@example.com"
-    })
+            "subject": "ASSIGN",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {unique_date} 23:59 CT\nInstructions: Complete problems 1-10",
+            "from_email": "teacher@rivendell-academy.co.uk",
+            "to_email": "assignments@example.com",
+            "message_id": f"test{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     assert response.status_code == 200
     data = response.json()
@@ -117,12 +117,12 @@ def test_process_submission_email():
 
     # First create an assignment using seeded class
     response = client.post("/api/process-email", json={
-        "subject": "ASSIGN",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {unique_date} 23:59 CT",
-        "from_email": "teacher@rivendell-academy.co.uk",
-        "to_email": "assignments@example.com",
-        "message_id": f"assign{unique_id}@example.com"
-    })
+            "subject": "ASSIGN",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {unique_date} 23:59 CT",
+            "from_email": "teacher@rivendell-academy.co.uk",
+            "to_email": "assignments@example.com",
+            "message_id": f"assign{unique_id}@example.com"
+        }, auth=("admin", "admin"))
 
     # Extract assignment code from response - use the unique date
     date_code = unique_date.replace("-", "")[4:]  # Extract MMDD from YYYY-MM-DD
@@ -130,12 +130,12 @@ def test_process_submission_email():
 
     # Then submit to it
     response = client.post("/api/process-email", json={
-        "subject": f"SUBMIT {assignment_code}",
-        "body": "StudentID: STU001",
-        "from_email": "student@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"submit{unique_id}@example.com"
-    })
+            "subject": f"SUBMIT {assignment_code}",
+            "body": "StudentID: STU001",
+            "from_email": "student@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"submit{unique_id}@example.com"
+        }, auth=("admin", "admin"))
 
     assert response.status_code == 200
     data = response.json()
@@ -144,7 +144,7 @@ def test_process_submission_email():
 
 def test_list_assignments():
     """Test listing all assignments."""
-    response = client.get("/api/assignments")
+    response = client.get("/api/assignments", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -155,15 +155,15 @@ def test_get_assignment_status():
 
     # First create an assignment using seeded class
     client.post("/api/process-email", json={
-        "subject": "ASSIGN",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: 2025-01-20 23:59 CT",
-        "from_email": "teacher@rivendell-academy.co.uk",
-        "to_email": "assignments@example.com",
-        "message_id": f"assign{unique_id}@example.com"
-    })
+            "subject": "ASSIGN",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: 2025-01-20 23:59 CT",
+            "from_email": "teacher@rivendell-academy.co.uk",
+            "to_email": "assignments@example.com",
+            "message_id": f"assign{unique_id}@example.com"
+        }, auth=("admin", "admin"))
 
     # Use the known assignment code format
-    response = client.get("/api/assignments/MATH7-0120/status")
+    response = client.get("/api/assignments/MATH7-0120/status", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert "assignment" in data

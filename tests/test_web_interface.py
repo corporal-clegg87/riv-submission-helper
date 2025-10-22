@@ -90,7 +90,7 @@ def setup_test_data():
 
 def test_web_interface_homepage():
     """Test that the web interface homepage loads correctly."""
-    response = client.get("/")
+    response = client.get("/", auth=("admin", "admin"))
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "Email-First Assignment System" in response.text
@@ -112,12 +112,12 @@ def test_api_validation_errors():
     """Test API input validation."""
     # Test empty subject
     response = client.post("/api/process-email", json={
-        "subject": "",
-        "body": "Test body",
-        "from_email": "test@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": "test@example.com"
-    })
+            "subject": "",
+            "body": "Test body",
+            "from_email": "test@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": "test@example.com"
+        }, auth=("admin", "admin"))
     assert response.status_code == 422  # Validation error
     
     # Test invalid email format
@@ -127,18 +127,18 @@ def test_api_validation_errors():
         "from_email": "invalid-email",
         "to_email": "assignments@example.com",
         "message_id": "test@example.com"
-    })
+    }, auth=("admin", "admin"))
     assert response.status_code == 422  # Validation error
 
 def test_assignment_code_validation():
     """Test assignment code format validation."""
     # Test invalid assignment code format
-    response = client.get("/api/assignments/invalid-code/status")
+    response = client.get("/api/assignments/invalid-code/status", auth=("admin", "admin"))
     assert response.status_code == 400
     assert "Invalid assignment code format" in response.json()["detail"]
     
     # Test valid format (should return 404 for non-existent assignment)
-    response = client.get("/api/assignments/ENG7-0115/status")
+    response = client.get("/api/assignments/ENG7-0115/status", auth=("admin", "admin"))
     assert response.status_code == 404
 
 def test_process_assignment_with_validation():
@@ -148,12 +148,12 @@ def test_process_assignment_with_validation():
     timestamp = int(time.time())
     test_date = f"2025-{timestamp % 12 + 1:02d}-{timestamp % 28 + 1:02d}"
     response = client.post("/api/process-email", json={
-        "subject": f"ASSIGN Test Assignment {unique_id}",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT\nInstructions: Complete problems 1-10",
-        "from_email": "teacher@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"test{unique_id}@example.com"
-    })
+            "subject": f"ASSIGN Test Assignment {unique_id}",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT\nInstructions: Complete problems 1-10",
+            "from_email": "teacher@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"test{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     assert response.status_code == 200
     data = response.json()
@@ -170,24 +170,24 @@ def test_process_submission_with_validation():
     
     # First create an assignment with unique class name
     client.post("/api/process-email", json={
-        "subject": f"ASSIGN Test Assignment {unique_id}",
-        "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT",
-        "from_email": "teacher@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"assign{unique_id}@example.com"
-    })
+            "subject": f"ASSIGN Test Assignment {unique_id}",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT",
+            "from_email": "teacher@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"assign{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     # Then submit to it (assignment code will be unique based on class and date)
     # The class name gets truncated to 8 chars, so Math 8 becomes MATH8
     date_code = test_date.replace("-", "")[4:]  # Extract MMDD from YYYY-MM-DD
     class_code = "MATH8"
     response = client.post("/api/process-email", json={
-        "subject": f"SUBMIT {class_code}-{date_code}",
-        "body": "StudentID: STU001",
-        "from_email": "student@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"submit{unique_id}@example.com"
-    })
+            "subject": f"SUBMIT {class_code}-{date_code}",
+            "body": "StudentID: STU001",
+            "from_email": "student@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"submit{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     assert response.status_code == 200
     data = response.json()
@@ -201,12 +201,12 @@ def test_error_handling():
     
     # Test processing invalid command
     response = client.post("/api/process-email", json={
-        "subject": "INVALID_COMMAND",
-        "body": "Some body",
-        "from_email": "test@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"test{unique_id}@example.com"
-    })
+            "subject": "INVALID_COMMAND",
+            "body": "Some body",
+            "from_email": "test@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"test{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     assert response.status_code == 200
     data = response.json()
@@ -215,7 +215,7 @@ def test_error_handling():
 
 def test_assignment_listing():
     """Test listing all assignments."""
-    response = client.get("/api/assignments")
+    response = client.get("/api/assignments", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -224,14 +224,14 @@ def test_assignment_status_structure():
     """Test assignment status response structure."""
     # Create an assignment first
     client.post("/api/process-email", json={
-        "subject": "ASSIGN Test Assignment",
-        "body": "Title: Math Homework\nClass: Math 8\nDeadline: 2025-01-20 23:59 CT",
-        "from_email": "teacher@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": "assign456@example.com"
-    })
+            "subject": "ASSIGN Test Assignment",
+            "body": "Title: Math Homework\nClass: Math 8\nDeadline: 2025-01-20 23:59 CT",
+            "from_email": "teacher@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": "assign456@example.com"
+        }, auth=("admin", "admin"))
     
-    response = client.get("/api/assignments/MATH8-0120/status")
+    response = client.get("/api/assignments/MATH8-0120/status", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert "assignment" in data
@@ -246,12 +246,12 @@ def test_xss_prevention():
     
     # Attempt XSS in title
     response = client.post("/api/process-email", json={
-        "subject": f"ASSIGN Test {unique_id}",
-        "body": f"Title: <script>alert('XSS')</script>\nClass: Test{unique_id}\nDeadline: 2025-01-20 23:59 CT",
-        "from_email": "teacher@example.com",
-        "to_email": "assignments@example.com",
-        "message_id": f"xss{unique_id}@example.com"
-    })
+            "subject": f"ASSIGN Test {unique_id}",
+            "body": f"Title: <script>alert('XSS')</script>\nClass: Test{unique_id}\nDeadline: 2025-01-20 23:59 CT",
+            "from_email": "teacher@example.com",
+            "to_email": "assignments@example.com",
+            "message_id": f"xss{unique_id}@example.com"
+        }, auth=("admin", "admin"))
     
     assert response.status_code == 200
     # Should succeed but script tags should be treated as text, not executed
@@ -260,7 +260,7 @@ def test_xss_prevention():
 
 def test_cors_headers():
     """Test that CORS headers are present."""
-    response = client.get("/api/assignments")
+    response = client.get("/api/assignments", auth=("admin", "admin"))
     assert response.status_code == 200
     # FastAPI TestClient doesn't simulate CORS preflight, but we can verify the middleware is configured
     # In real requests, access-control-allow-origin header would be present
@@ -282,12 +282,12 @@ def test_email_validation_strict():
     
     for invalid_email in invalid_emails:
         response = client.post("/api/process-email", json={
-            "subject": "ASSIGN Test",
-            "body": "Title: Test\nClass: Test\nDeadline: 2025-01-20 23:59 CT",
-            "from_email": invalid_email,
-            "to_email": "assignments@example.com",
-            "message_id": f"{unique_id}@example.com"
-        })
+                "subject": "ASSIGN Test",
+                "body": "Title: Test\nClass: Test\nDeadline: 2025-01-20 23:59 CT",
+                "from_email": invalid_email,
+                "to_email": "assignments@example.com",
+                "message_id": f"{unique_id}@example.com"
+            }, auth=("admin", "admin"))
         assert response.status_code == 422  # Validation error
 
 def test_error_message_sanitization():
