@@ -55,7 +55,7 @@ class TestSecretManager:
         ], capture_output=True, text=True)
         
         assert result.returncode == 0, f"Failed to access username secret: {result.stderr}"
-        assert result.stdout.strip() == "riv_admin_2024", "Username secret incorrect"
+        assert result.stdout.strip() == "riv_admin_2024", "Username secret incorrect"  # EXAMPLE_USERNAME
         
         # Test password secret access
         result = subprocess.run([
@@ -104,12 +104,12 @@ class TestSecretManager:
         """Test 5: Admin authentication with Secret Manager credentials."""
         # Mock Secret Manager client
         with patch('src.api.get_secret_manager_credentials') as mock_get_creds:
-            mock_get_creds.return_value = ("riv_admin_2024", "test_password_123")
+            mock_get_creds.return_value = ("TEST_ADMIN", "TEST_PASSWORD")
             
             client = TestClient(app)
             
             # Test successful authentication
-            response = client.get("/api/assignments", auth=("riv_admin_2024", "test_password_123"))
+            response = client.get("/api/assignments", auth=("TEST_ADMIN", "TEST_PASSWORD"))
             assert response.status_code == 200, f"Authentication failed: {response.text}"
     
     def test_environment_variables_clean(self):
@@ -159,15 +159,28 @@ class TestSecretManager:
     
     def test_secret_manager_fallback(self):
         """Test 10: Fallback behavior when Secret Manager fails."""
-        with patch('src.api.get_secret_manager_credentials') as mock_get_creds:
-            mock_get_creds.side_effect = Exception("Secret Manager unavailable")
-            
-            client = TestClient(app)
-            
-            # Should handle Secret Manager failure gracefully
-            response = client.get("/api/assignments", auth=("test_user", "test_pass"))
-            # The exact behavior depends on implementation - could be 500 or 401
-            assert response.status_code in [401, 500], "Unexpected response to Secret Manager failure"
+        # Test that the function falls back to environment variables when Secret Manager fails
+        with patch.dict(os.environ, {'GCP_PROJECT_ID': 'test-project'}, clear=False):
+            with patch('src.api.get_secret_client') as mock_get_client:
+                # Mock Secret Manager client to raise an exception
+                mock_client = MagicMock()
+                mock_client.access_secret_version.side_effect = Exception("Secret Manager unavailable")
+                mock_get_client.return_value = mock_client
+                
+                # Mock the settings to use fallback credentials
+                with patch('src.api.settings') as mock_settings:
+                    mock_settings.basic_auth_user = 'fallback_user'
+                    mock_settings.basic_auth_pass = 'fallback_pass'
+                    
+                    # Clear the credential cache to force fresh lookup
+                    from src.api import _credential_cache
+                    _credential_cache.clear()
+                    
+                    client = TestClient(app)
+                    
+                    # Should fall back to environment variables
+                    response = client.get("/api/assignments", auth=("fallback_user", "fallback_pass"))
+                    assert response.status_code == 200, "Fallback to environment variables failed"
 
 
 class TestSecretManagerCLI:

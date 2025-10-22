@@ -3,12 +3,20 @@ import time
 import tempfile
 import os
 from datetime import datetime
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from src.api import app
 from src.storage import Database
 from src.models import Student, Teacher, Class, Term, Parent, Enrollment
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def mock_secret_manager():
+    """Mock Secret Manager credentials for all tests."""
+    with patch('src.api.get_secret_manager_credentials') as mock_get_creds:
+        mock_get_creds.return_value = ("admin", "admin")
+        yield mock_get_creds
 
 @pytest.fixture(autouse=True)
 def setup_test_data():
@@ -127,7 +135,7 @@ def test_api_validation_errors():
         "from_email": "invalid-email",
         "to_email": "assignments@example.com",
         "message_id": "test@example.com"
-    }, auth=("admin", "admin"))
+    })
     assert response.status_code == 422  # Validation error
 
 def test_assignment_code_validation():

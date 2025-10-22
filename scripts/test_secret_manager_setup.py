@@ -60,7 +60,7 @@ def test_secret_manager_setup():
         return False
     
     username = result.stdout.strip()
-    if username != "riv_admin_2024":
+    if username != "riv_admin_2024":  # EXAMPLE_USERNAME
         print(f"❌ Username secret incorrect: {username}")
         return False
     

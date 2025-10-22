@@ -23,12 +23,101 @@ class Database:
         
         self.SessionLocal = sessionmaker(bind=self.engine)
         
+        # In development, drop and recreate database for clean testing
+        if self._is_development():
+            self._reset_database()
+        
         # Create tables with error handling
         from .models import Base
         try:
             Base.metadata.create_all(self.engine)
         except Exception as e:
             raise ConnectionError(f"Failed to create database tables: {str(e)}. Ensure database is accessible.") from e
+        
+        # In development, create test data
+        if self._is_development():
+            self._create_test_data()
+    
+    def _is_development(self) -> bool:
+        """Check if we're in development mode."""
+        return (
+            os.getenv('APP_ENVIRONMENT', 'development') == 'development' and
+            'sqlite' in str(self.engine.url) and
+            os.getenv('GCP_PROJECT_ID') is None
+        )
+    
+    def _reset_database(self) -> None:
+        """Drop and recreate database in development."""
+        try:
+            from .models import Base
+            # Drop all tables
+            Base.metadata.drop_all(self.engine)
+            print("🗑️ Development database reset - all data cleared")
+        except Exception as e:
+            print(f"⚠️ Could not reset database: {e}")
+            # Continue anyway - might be first run
+    
+    def _create_test_data(self) -> None:
+        """Create test data for development."""
+        try:
+            # Create test term
+            term = Term(
+                id="test-term-1",
+                name="FALL",
+                year=2024,
+                start_date=datetime(2024, 9, 1),
+                end_date=datetime(2024, 12, 15)
+            )
+            self.save_term(term)
+            
+            # Create test teacher (authorized for testing)
+            teacher = Teacher(
+                id="test-teacher-1",
+                email="teacher@example.com",  # This will be authorized for testing
+                first_name="Test",
+                last_name="Teacher"
+            )
+            self.save_teacher(teacher)
+            
+            # Create test class
+            class_obj = Class(
+                id="test-class-1",
+                term_id="test-term-1",
+                name="Math 7",
+                teacher_id="test-teacher-1"
+            )
+            self.save_class(class_obj)
+            
+            # Create test student
+            student = Student(
+                id="test-student-1",
+                student_id="STU001",
+                first_name="Test",
+                last_name="Student"
+            )
+            self.save_student(student)
+            
+            # Create test parent
+            parent = Parent(
+                id="test-parent-1",
+                email="parent@example.com"
+            )
+            self.save_parent(parent)
+            
+            # Create test enrollment
+            enrollment = Enrollment(
+                id="test-enrollment-1",
+                class_id="test-class-1",
+                student_id="STU001",
+                parent_id="test-parent-1",
+                joined_at=datetime.utcnow()
+            )
+            self.save_enrollment(enrollment)
+            
+            print("📝 Test data created for development")
+        except Exception as e:
+            print(f"⚠️ Could not create test data: {e}")
+            # Continue anyway
     
     def save_assignment(self, assignment: Assignment) -> None:
         with self.SessionLocal() as session:

@@ -27,7 +27,7 @@ def create_secrets():
     
     # Generate secure password
     password = generate_secure_password()
-    username = "riv_admin_2024"
+    username = "riv_admin_2024"  # EXAMPLE_USERNAME
     
     # Create username secret
     print("  - Creating username secret...")

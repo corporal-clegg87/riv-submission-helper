@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,39 +34,63 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="*")
     basic_auth_user: str = Field(default="admin")
     basic_auth_pass: str = Field(default="admin")
+    secret_username_name: str = Field(default="riv-basic-auth-user")
+    secret_password_name: str = Field(default="riv-basic-auth-pass")
     
     class Config:
         env_prefix = "APP_"
 
 settings = Settings()
 
-# Secret Manager client
+# Secret Manager client - initialized lazily to prevent import failures
 secret_client = None
-if SECRET_MANAGER_AVAILABLE:
-    try:
-        secret_client = secretmanager.SecretManagerServiceClient()
-    except Exception as e:
-        logger.warning(f"Failed to initialize Secret Manager client: {e}")
+
+# Credential caching
+_credential_cache = {}
+_credential_cache_ttl = 300  # 5 minutes
+
+def get_secret_client():
+    """Get Secret Manager client, initializing it if needed."""
+    global secret_client
+    if secret_client is None and SECRET_MANAGER_AVAILABLE:
+        try:
+            secret_client = secretmanager.SecretManagerServiceClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize Secret Manager client: {e}")
+    return secret_client
 
 def get_secret_manager_credentials():
-    """Get credentials from Secret Manager or environment variables."""
+    """Get credentials from Secret Manager or environment variables with caching."""
+    # Check cache first
+    current_time = time.time()
+    if 'credentials' in _credential_cache:
+        cached_time, cached_creds = _credential_cache['credentials']
+        if current_time - cached_time < _credential_cache_ttl:
+            logger.debug("Using cached credentials")
+            return cached_creds
+    
     # Check if we're in production (Cloud Run) with Secret Manager available
-    if secret_client and os.getenv('GCP_PROJECT_ID'):
+    client = get_secret_client()
+    if client and os.getenv('GCP_PROJECT_ID'):
         try:
             project_id = os.getenv('GCP_PROJECT_ID')
             
             # Get username from Secret Manager
-            username_secret_name = f"projects/{project_id}/secrets/riv-basic-auth-user/versions/latest"
-            username_response = secret_client.access_secret_version(request={"name": username_secret_name})
+            username_secret_name = f"projects/{project_id}/secrets/{settings.secret_username_name}/versions/latest"
+            username_response = client.access_secret_version(request={"name": username_secret_name})
             username = username_response.payload.data.decode("UTF-8")
             
             # Get password from Secret Manager
-            password_secret_name = f"projects/{project_id}/secrets/riv-basic-auth-pass/versions/latest"
-            password_response = secret_client.access_secret_version(request={"name": password_secret_name})
+            password_secret_name = f"projects/{project_id}/secrets/{settings.secret_password_name}/versions/latest"
+            password_response = client.access_secret_version(request={"name": password_secret_name})
             password = password_response.payload.data.decode("UTF-8")
             
-            logger.info("Using Secret Manager credentials")
-            return username, password
+            # Cache the credentials
+            credentials = (username, password)
+            _credential_cache['credentials'] = (current_time, credentials)
+            
+            logger.debug("Using Secret Manager credentials")
+            return credentials
             
         except Exception as e:
             logger.warning(f"Failed to get credentials from Secret Manager: {e}")
@@ -73,8 +98,11 @@ def get_secret_manager_credentials():
             pass
     
     # Use environment variables (for local development or fallback)
-    logger.info("Using environment variable credentials")
-    return settings.basic_auth_user, settings.basic_auth_pass
+    credentials = (settings.basic_auth_user, settings.basic_auth_pass)
+    _credential_cache['credentials'] = (current_time, credentials)
+    
+    logger.debug("Using environment variable credentials")
+    return credentials
 
 # Basic authentication
 security = HTTPBasic()
