@@ -135,7 +135,7 @@ def test_api_validation_errors():
         "from_email": "invalid-email",
         "to_email": "assignments@example.com",
         "message_id": "test@example.com"
-    })
+    }, auth=("admin", "admin"))
     assert response.status_code == 422  # Validation error
 
 def test_assignment_code_validation():

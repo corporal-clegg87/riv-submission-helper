@@ -472,3 +472,13 @@ class Database:
                 return True
         except Exception:
             return False
+
+    def _reset_database(self) -> None:
+        """Reset database for testing - drop all tables and recreate."""
+        try:
+            from .models import Base
+            Base.metadata.drop_all(self.engine)
+            Base.metadata.create_all(self.engine)
+        except Exception as e:
+            print(f"Could not reset database: {e}")
+            # Continue anyway - might be first run
