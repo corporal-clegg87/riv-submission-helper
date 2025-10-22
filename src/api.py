@@ -172,11 +172,7 @@ async def process_email_endpoint(request: EmailRequest, current_user: str = Depe
 
 @app.get("/api/assignments")
 async def list_assignments_endpoint(current_user: str = Depends(get_current_user)):
-<<<<<<< HEAD
-    """List all assignments."""
-=======
     """List all assignments. Requires authentication."""
->>>>>>> fix/auth-code-review-issues
     assignments_with_classes = db.get_all_assignments_with_classes()
     result = []
     for assignment, class_name in assignments_with_classes:
@@ -194,11 +190,7 @@ async def list_assignments_endpoint(current_user: str = Depends(get_current_user
 
 @app.get("/api/assignments/{assignment_code}/status")
 async def get_assignment_status_endpoint(assignment_code: str, current_user: str = Depends(get_current_user)):
-<<<<<<< HEAD
-    """Get status of a specific assignment."""
-=======
     """Get status of a specific assignment. Requires authentication."""
->>>>>>> fix/auth-code-review-issues
     # Validate assignment code format
     if not re.match(r'^[A-Z0-9]+-[A-Z0-9]+$', assignment_code):
         raise HTTPException(status_code=400, detail="Invalid assignment code format. Use format like ENG7-0115")
@@ -286,8 +278,5 @@ async def health_check():
 
 @app.get("/")
 async def serve_index(current_user: str = Depends(get_current_user)):
-<<<<<<< HEAD
-=======
     """Serve the main web interface. Requires authentication."""
->>>>>>> fix/auth-code-review-issues
     return FileResponse("static/index.html")
