@@ -1,6 +1,5 @@
 import os
 import logging
-import base64
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,8 +37,8 @@ security = HTTPBasic()
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify basic authentication credentials."""
-    correct_username = os.getenv("BASIC_AUTH_USER", settings.basic_auth_user)
-    correct_password = os.getenv("BASIC_AUTH_PASS", settings.basic_auth_pass)
+    correct_username = settings.basic_auth_user
+    correct_password = settings.basic_auth_pass
     
     if credentials.username != correct_username or credentials.password != correct_password:
         raise HTTPException(
@@ -144,7 +143,7 @@ async def process_email_endpoint(request: EmailRequest, current_user: str = Depe
     """
     Process an email and return the response.
     
-    This endpoint handles ASSIGN, SUBMIT, and RETURN email commands.
+    This endpoint requires authentication and handles ASSIGN, SUBMIT, and RETURN email commands.
     All inputs are validated both client-side and server-side.
     """
     try:
@@ -173,7 +172,7 @@ async def process_email_endpoint(request: EmailRequest, current_user: str = Depe
 
 @app.get("/api/assignments")
 async def list_assignments_endpoint(current_user: str = Depends(get_current_user)):
-    """List all assignments."""
+    """List all assignments. Requires authentication."""
     assignments_with_classes = db.get_all_assignments_with_classes()
     result = []
     for assignment, class_name in assignments_with_classes:
@@ -191,7 +190,7 @@ async def list_assignments_endpoint(current_user: str = Depends(get_current_user
 
 @app.get("/api/assignments/{assignment_code}/status")
 async def get_assignment_status_endpoint(assignment_code: str, current_user: str = Depends(get_current_user)):
-    """Get status of a specific assignment."""
+    """Get status of a specific assignment. Requires authentication."""
     # Validate assignment code format
     if not re.match(r'^[A-Z0-9]+-[A-Z0-9]+$', assignment_code):
         raise HTTPException(status_code=400, detail="Invalid assignment code format. Use format like ENG7-0115")
@@ -279,4 +278,5 @@ async def health_check():
 
 @app.get("/")
 async def serve_index(current_user: str = Depends(get_current_user)):
+    """Serve the main web interface. Requires authentication."""
     return FileResponse("static/index.html")
