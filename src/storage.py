@@ -1,6 +1,7 @@
 import json
 import uuid
 import os
+from .utils.database import DatabaseSession
 from typing import Optional, List
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -22,6 +23,7 @@ class Database:
             raise ConnectionError(f"Failed to create database engine: {str(e)}. Check DATABASE_URL configuration.") from e
         
         self.SessionLocal = sessionmaker(bind=self.engine)
+        self.session_manager = DatabaseSession(self.SessionLocal)
         
         # In development, drop and recreate database for clean testing
         if self._is_development():
@@ -120,7 +122,7 @@ class Database:
             # Continue anyway
     
     def save_assignment(self, assignment: Assignment) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_assignment = AssignmentDB(
                 id=assignment.id,
                 code=assignment.code,
@@ -135,10 +137,9 @@ class Database:
                 created_at=assignment.created_at
             )
             session.add(db_assignment)
-            session.commit()
     
     def get_assignment_by_code(self, code: str) -> Optional[Assignment]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_assignment = session.query(AssignmentDB).filter_by(code=code).first()
             if not db_assignment:
                 return None
@@ -157,7 +158,7 @@ class Database:
             )
     
     def get_all_assignments(self) -> List[Assignment]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_assignments = session.query(AssignmentDB).all()
             return [
                 Assignment(
@@ -177,7 +178,7 @@ class Database:
             ]
     
     def save_submission(self, submission: Submission) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_submission = SubmissionDB(
                 id=submission.id,
                 assignment_id=submission.assignment_id,
@@ -187,10 +188,9 @@ class Database:
                 status=submission.status
             )
             session.add(db_submission)
-            session.commit()
     
     def get_submission_by_assignment_and_student(self, assignment_id: str, student_id: str) -> Optional[Submission]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_submission = session.query(SubmissionDB).filter_by(
                 assignment_id=assignment_id, 
                 student_id=student_id
@@ -207,7 +207,7 @@ class Database:
             )
     
     def get_submissions_by_assignment(self, assignment_id: str) -> List[Submission]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_submissions = session.query(SubmissionDB).filter_by(assignment_id=assignment_id).all()
             return [
                 Submission(
@@ -222,7 +222,7 @@ class Database:
             ]
     
     def save_grade(self, grade: Grade) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_grade = GradeDB(
                 id=grade.id,
                 assignment_id=grade.assignment_id,
@@ -232,10 +232,9 @@ class Database:
                 graded_at=grade.graded_at
             )
             session.add(db_grade)
-            session.commit()
     
     def save_email_message(self, email: EmailMessage) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_email = EmailMessageDB(
                 id=email.id,
                 direction=email.direction,
@@ -247,11 +246,10 @@ class Database:
                 parse_result=email.parse_result
             )
             session.add(db_email)
-            session.commit()
 
     # Core model methods
     def save_student(self, student: Student) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_student = StudentDB(
                 id=student.id,
                 student_id=student.student_id,
@@ -261,10 +259,9 @@ class Database:
                 status=student.status
             )
             session.add(db_student)
-            session.commit()
 
     def get_student_by_id(self, student_id: str) -> Optional[Student]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_student = session.query(StudentDB).filter_by(student_id=student_id).first()
             if not db_student:
                 return None
@@ -278,7 +275,7 @@ class Database:
             )
 
     def save_teacher(self, teacher: Teacher) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_teacher = TeacherDB(
                 id=teacher.id,
                 email=teacher.email,
@@ -287,10 +284,9 @@ class Database:
                 status=teacher.status
             )
             session.add(db_teacher)
-            session.commit()
 
     def get_teacher_by_email(self, email: str) -> Optional[Teacher]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_teacher = session.query(TeacherDB).filter_by(email=email).first()
             if not db_teacher:
                 return None
@@ -303,7 +299,7 @@ class Database:
             )
 
     def save_class(self, class_obj: Class) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_class = ClassDB(
                 id=class_obj.id,
                 term_id=class_obj.term_id,
@@ -314,10 +310,9 @@ class Database:
                 status=class_obj.status
             )
             session.add(db_class)
-            session.commit()
 
     def get_class_by_name(self, name: str) -> Optional[Class]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_class = session.query(ClassDB).filter_by(name=name).first()
             if not db_class:
                 return None
@@ -332,7 +327,7 @@ class Database:
             )
 
     def get_class_by_id(self, class_id: str) -> Optional[Class]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_class = session.query(ClassDB).filter_by(id=class_id).first()
             if not db_class:
                 return None
@@ -347,7 +342,7 @@ class Database:
             )
 
     def save_term(self, term: Term) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_term = TermDB(
                 id=term.id,
                 name=term.name.value,
@@ -356,10 +351,9 @@ class Database:
                 end_date=term.end_date
             )
             session.add(db_term)
-            session.commit()
 
     def save_parent(self, parent: Parent) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_parent = ParentDB(
                 id=parent.id,
                 email=parent.email,
@@ -368,10 +362,9 @@ class Database:
                 status=parent.status
             )
             session.add(db_parent)
-            session.commit()
 
     def save_enrollment(self, enrollment: Enrollment) -> None:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_session() as session:
             db_enrollment = EnrollmentDB(
                 id=enrollment.id,
                 class_id=enrollment.class_id,
@@ -382,10 +375,9 @@ class Database:
                 left_at=enrollment.left_at
             )
             session.add(db_enrollment)
-            session.commit()
 
     def get_enrollments_by_class(self, class_id: str) -> List[Enrollment]:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             db_enrollments = session.query(EnrollmentDB).filter_by(class_id=class_id, active=True).all()
             return [
                 Enrollment(
@@ -401,7 +393,7 @@ class Database:
             ]
 
     def is_student_enrolled_in_class(self, student_id: str, class_id: str) -> bool:
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             enrollment = session.query(EnrollmentDB).filter_by(
                 student_id=student_id, 
                 class_id=class_id, 
@@ -411,7 +403,7 @@ class Database:
 
     def get_all_assignments_with_classes(self) -> List[tuple[Assignment, Optional[str]]]:
         """Get all assignments with their class names in a single query."""
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             results = session.query(AssignmentDB, ClassDB.name).outerjoin(
                 ClassDB, AssignmentDB.class_id == ClassDB.id
             ).all()
@@ -438,7 +430,7 @@ class Database:
     
     def get_assignment_with_class_by_code(self, code: str) -> Optional[tuple[Assignment, Optional[str]]]:
         """Get assignment with class name in a single query."""
-        with self.SessionLocal() as session:
+        with self.session_manager.get_readonly_session() as session:
             result = session.query(AssignmentDB, ClassDB.name).outerjoin(
                 ClassDB, AssignmentDB.class_id == ClassDB.id
             ).filter(AssignmentDB.code == code).first()
@@ -467,7 +459,7 @@ class Database:
     def test_connection(self) -> bool:
         """Test database connection by executing a simple query."""
         try:
-            with self.SessionLocal() as session:
+            with self.session_manager.get_readonly_session() as session:
                 session.execute(text("SELECT 1"))
                 return True
         except Exception:

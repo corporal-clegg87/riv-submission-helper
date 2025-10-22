@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+from .utils.validation import EmailValidator
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
