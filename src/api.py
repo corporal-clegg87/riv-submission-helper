@@ -1,10 +1,12 @@
 import os
 import logging
+import base64
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, field_validator, Field
 from pydantic_settings import BaseSettings
 from typing import List, Optional
@@ -23,11 +25,29 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     environment: str = Field(default="development")
     cors_origins: str = Field(default="*")
+    basic_auth_user: str = Field(default="admin")
+    basic_auth_pass: str = Field(default="admin")
     
     class Config:
         env_prefix = "APP_"
 
 settings = Settings()
+
+# Basic authentication
+security = HTTPBasic()
+
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
+    """Verify basic authentication credentials."""
+    correct_username = os.getenv("BASIC_AUTH_USER", settings.basic_auth_user)
+    correct_password = os.getenv("BASIC_AUTH_PASS", settings.basic_auth_pass)
+    
+    if credentials.username != correct_username or credentials.password != correct_password:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 app = FastAPI(title="RIV Assignment Helper API", version="1.0.0")
 
@@ -120,7 +140,7 @@ class AssignmentResponse(BaseModel):
     status: str
 
 @app.post("/api/process-email")
-async def process_email_endpoint(request: EmailRequest):
+async def process_email_endpoint(request: EmailRequest, current_user: str = Depends(get_current_user)):
     """
     Process an email and return the response.
     
@@ -152,7 +172,7 @@ async def process_email_endpoint(request: EmailRequest):
         raise HTTPException(status_code=500, detail=detail)
 
 @app.get("/api/assignments")
-async def list_assignments_endpoint():
+async def list_assignments_endpoint(current_user: str = Depends(get_current_user)):
     """List all assignments."""
     assignments_with_classes = db.get_all_assignments_with_classes()
     result = []
@@ -170,7 +190,7 @@ async def list_assignments_endpoint():
     return result
 
 @app.get("/api/assignments/{assignment_code}/status")
-async def get_assignment_status_endpoint(assignment_code: str):
+async def get_assignment_status_endpoint(assignment_code: str, current_user: str = Depends(get_current_user)):
     """Get status of a specific assignment."""
     # Validate assignment code format
     if not re.match(r'^[A-Z0-9]+-[A-Z0-9]+$', assignment_code):
@@ -248,7 +268,7 @@ async def gmail_webhook(request: Request):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Cloud Run."""
+    """Health check endpoint for Cloud Run (public for monitoring)."""
     try:
         # Test database connection
         db.test_connection()
@@ -258,5 +278,5 @@ async def health_check():
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 @app.get("/")
-async def serve_index():
+async def serve_index(current_user: str = Depends(get_current_user)):
     return FileResponse("static/index.html")
