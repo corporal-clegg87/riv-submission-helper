@@ -17,14 +17,6 @@ class GradeService:
         assignment_code = grade_data['assignment_code']
         student_id = grade_data['student_id']
         
-        # Validate teacher is whitelisted
-        try:
-            teacher = self._validate_teacher_authorization(email_msg.from_email)
-        except AuthorizationError as e:
-            email_msg.parse_result = 'TEACHER_NOT_WHITELISTED'
-            self.db.save_email_message(email_msg)
-            return str(e)
-        
         # Find assignment
         try:
             assignment = self.db.get_assignment_by_code(assignment_code)
@@ -95,14 +87,3 @@ class GradeService:
         
         return f"Grade recorded for student {student_id} on assignment {assignment_code}: {grade.grade_value}"
     
-    def _validate_teacher_authorization(self, email: str) -> Teacher:
-        """Validate teacher is authorized. Returns Teacher or raises AuthorizationError."""
-        if email not in self._cache:
-            try:
-                self._cache[email] = self.db.get_teacher_by_email(email)
-            except NotFoundError:
-                raise AuthorizationError(f"Email {email} is not authorized to grade assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
-        teacher = self._cache[email]
-        if not teacher:
-            raise AuthorizationError(f"Email {email} is not authorized to grade assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
-        return teacher

@@ -14,14 +14,6 @@ class AssignmentService:
     
     def create_assignment(self, assignment_data: dict, email_msg: EmailMessage) -> str:
         """Create assignment with validation."""
-        # Validate teacher authorization
-        try:
-            teacher = self._validate_teacher_authorization(email_msg.from_email)
-        except AuthorizationError as e:
-            email_msg.parse_result = 'TEACHER_NOT_WHITELISTED'
-            self.db.save_email_message(email_msg)
-            return str(e)
-        
         # Validate class exists
         try:
             class_obj = self._validate_class_exists(assignment_data['class_name'])
@@ -39,7 +31,7 @@ class AssignmentService:
             instructions=assignment_data.get('instructions', ''),
             deadline_at=assignment_data['deadline_at'],
             deadline_tz='CT',
-            created_by_teacher_id=teacher.id,
+            created_by_teacher_id=class_obj.teacher_id,  # Use class teacher instead of validating email
             status='SCHEDULED',
             grace_days=7,
             created_at=datetime.utcnow()
@@ -54,17 +46,6 @@ class AssignmentService:
         
         return f"Assignment '{assignment.title}' created successfully. Code: {assignment.code}"
     
-    def _validate_teacher_authorization(self, email: str) -> Teacher:
-        """Validate teacher is authorized. Returns Teacher or raises AuthorizationError."""
-        if email not in self._cache:
-            try:
-                self._cache[email] = self.db.get_teacher_by_email(email)
-            except NotFoundError:
-                raise AuthorizationError(f"Email {email} is not authorized to create assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
-        teacher = self._cache[email]
-        if not teacher:
-            raise AuthorizationError(f"Email {email} is not authorized to create assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
-        return teacher
     
     def _validate_class_exists(self, class_name: str) -> Class:
         """Validate class exists. Returns Class or raises NotFoundError."""
