@@ -1,13 +1,14 @@
 import re
 import uuid
 from datetime import datetime
+from .exceptions import ValidationError, ErrorCodes
 from typing import Dict, Optional, Tuple
 from .models import Assignment
 
 def parse_assignment_email(email_body: str, subject: str) -> Optional[Dict]:
     """Parse ASSIGN email and return assignment data or None if invalid."""
     if not subject.strip().upper().startswith('ASSIGN'):
-        return None
+        raise ValidationError("Email subject must start with 'ASSIGN'", ErrorCodes.INVALID_SUBJECT_FORMAT)
     
     # Extract key:value pairs from body
     fields = {}
@@ -21,7 +22,7 @@ def parse_assignment_email(email_body: str, subject: str) -> Optional[Dict]:
     required = ['title', 'class', 'deadline']
     for field in required:
         if field not in fields:
-            return None
+            raise ValidationError(f"Required field '{field}' is missing", ErrorCodes.MISSING_REQUIRED_FIELD)
     
     # Parse deadline (expects YYYY-MM-DD [HH:mm] CT format)
     try:
@@ -32,7 +33,7 @@ def parse_assignment_email(email_body: str, subject: str) -> Optional[Dict]:
             deadline_at = datetime.strptime(deadline_str, '%Y-%m-%d')
             deadline_at = deadline_at.replace(hour=23, minute=59)
     except ValueError:
-        return None
+        raise ValidationError("Invalid deadline format. Expected YYYY-MM-DD [HH:mm] CT", ErrorCodes.INVALID_DEADLINE_FORMAT)
     
     # Generate assignment code
     class_code = fields['class'].replace(' ', '').upper()[:8]
@@ -52,7 +53,7 @@ def parse_submission_email(email_body: str, subject: str) -> Optional[Tuple[str,
     """Parse SUBMIT email and return (assignment_code, student_id) or None if invalid."""
     match = re.match(r'SUBMIT\s+(\S+)', subject.upper())
     if not match:
-        return None
+        raise ValidationError("Email subject must match 'SUBMIT <assignment_code>' format", ErrorCodes.INVALID_SUBJECT_FORMAT)
     
     assignment_code = match.group(1)
     
@@ -65,7 +66,7 @@ def parse_submission_email(email_body: str, subject: str) -> Optional[Tuple[str,
             break
     
     if not student_id:
-        return None
+        raise ValidationError("StudentID is required in email body", ErrorCodes.MISSING_STUDENT_ID)
     
     return (assignment_code, student_id)
 
@@ -73,7 +74,7 @@ def parse_grade_email(email_body: str, subject: str) -> Optional[Dict]:
     """Parse GRADE email and return grade data or None if invalid."""
     match = re.match(r'GRADE\s+(\S+)\s+(\S+)', subject.upper())
     if not match:
-        return None
+        raise ValidationError("Email subject must match 'GRADE <assignment_code> <student_id>' format", ErrorCodes.INVALID_SUBJECT_FORMAT)
     
     assignment_code = match.group(1)
     student_id = match.group(2)
@@ -88,7 +89,7 @@ def parse_grade_email(email_body: str, subject: str) -> Optional[Dict]:
     
     # Validate required fields
     if 'grade' not in grade_data:
-        return None
+        raise ValidationError("Grade value is required in email body", ErrorCodes.MISSING_GRADE_VALUE)
     
     return {
         'assignment_code': assignment_code,
@@ -101,7 +102,7 @@ def parse_return_email(email_body: str, subject: str) -> Optional[Tuple[str, str
     """Parse RETURN email and return (assignment_code, student_id, grade_data) or None."""
     match = re.match(r'RETURN\s+(\S+)\s+(\S+)', subject.upper())
     if not match:
-        return None
+        raise ValidationError("Email subject must match 'RETURN <assignment_code> <student_id>' format", ErrorCodes.INVALID_SUBJECT_FORMAT)
     
     assignment_code = match.group(1)
     student_id = match.group(2)

@@ -128,7 +128,7 @@ def test_email_processing(test_database_with_data):
     )
     
     assert "Grade recorded" in response
-    assert f"STU001-{unique_suffix}" in response
+    assert f"STU001-{unique_suffix}".upper() in response
     assert "A-" in response
     
     # Test service separation by verifying individual services work

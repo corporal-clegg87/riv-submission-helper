@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime
 from src.parser import parse_assignment_email, parse_submission_email, parse_return_email
+from src.exceptions import ValidationError
 
 def test_parse_assignment_valid():
     """Test valid assignment email parsing."""
@@ -24,8 +25,9 @@ def test_parse_assignment_invalid():
     subject = "ASSIGN"
     body = "Title: Test\nClass: Test"  # Missing deadline
     
-    assignment = parse_assignment_email(body, subject)
-    assert assignment is None
+    with pytest.raises(ValidationError) as exc_info:
+        parse_assignment_email(body, subject)
+    assert "Required field 'deadline' is missing" in str(exc_info.value)
 
 def test_parse_submission_valid():
     """Test valid submission email parsing."""

@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from .exceptions import AssignmentError, ValidationError, AuthorizationError, NotFoundError
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, field_validator, Field
 from pydantic_settings import BaseSettings
@@ -232,6 +233,15 @@ async def process_email_endpoint(request: EmailRequest, current_user: str = Depe
         # Validation errors from the processor
         logger.warning(f"Validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except ValidationError as e:
+        logger.warning(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except AuthorizationError as e:
+        logger.warning(f"Authorization error: {str(e)}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except NotFoundError as e:
+        logger.warning(f"Not found error: {str(e)}")
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         # Unexpected errors - log details but return generic message in production
         logger.error(f"Internal error processing email: {str(e)}", exc_info=True)

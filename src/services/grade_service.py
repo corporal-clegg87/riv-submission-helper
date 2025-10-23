@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Dict, Tuple, Optional
+from ..exceptions import AuthorizationError, NotFoundError, ErrorCodes
 from ..storage import Database
 from ..models import Grade, EmailMessage, Teacher
 
@@ -17,25 +18,28 @@ class GradeService:
         student_id = grade_data['student_id']
         
         # Validate teacher is whitelisted
-        teacher = self._validate_teacher_authorization(email_msg.from_email)
-        if not teacher:
+        try:
+            teacher = self._validate_teacher_authorization(email_msg.from_email)
+        except AuthorizationError as e:
             email_msg.parse_result = 'TEACHER_NOT_WHITELISTED'
             self.db.save_email_message(email_msg)
-            return f"Error: Email {email_msg.from_email} is not authorized to grade assignments."
+            return str(e)
         
         # Find assignment
-        assignment = self.db.get_assignment_by_code(assignment_code)
-        if not assignment:
+        try:
+            assignment = self.db.get_assignment_by_code(assignment_code)
+        except NotFoundError as e:
             email_msg.parse_result = 'ASSIGNMENT_NOT_FOUND'
             self.db.save_email_message(email_msg)
-            return f"Assignment {assignment_code} not found."
+            return str(e)
         
         # Check if student has submitted
-        submission = self.db.get_submission_by_assignment_and_student(assignment.id, student_id)
-        if not submission:
+        try:
+            submission = self.db.get_submission_by_assignment_and_student(assignment.id, student_id)
+        except NotFoundError as e:
             email_msg.parse_result = 'NO_SUBMISSION_FOUND'
             self.db.save_email_message(email_msg)
-            return f"No submission found for student {student_id} on assignment {assignment_code}."
+            return str(e)
         
         # Create grade
         grade = Grade(
@@ -59,18 +63,20 @@ class GradeService:
         assignment_code, student_id, grade_data = return_data
         
         # Find assignment
-        assignment = self.db.get_assignment_by_code(assignment_code)
-        if not assignment:
+        try:
+            assignment = self.db.get_assignment_by_code(assignment_code)
+        except NotFoundError as e:
             email_msg.parse_result = 'ASSIGNMENT_NOT_FOUND'
             self.db.save_email_message(email_msg)
-            return f"Assignment {assignment_code} not found."
+            return str(e)
         
         # Check if student has submitted
-        submission = self.db.get_submission_by_assignment_and_student(assignment.id, student_id)
-        if not submission:
+        try:
+            submission = self.db.get_submission_by_assignment_and_student(assignment.id, student_id)
+        except NotFoundError as e:
             email_msg.parse_result = 'NO_SUBMISSION_FOUND'
             self.db.save_email_message(email_msg)
-            return f"No submission found for student {student_id} on assignment {assignment_code}."
+            return str(e)
         
         # Create grade
         grade = Grade(
@@ -89,8 +95,14 @@ class GradeService:
         
         return f"Grade recorded for student {student_id} on assignment {assignment_code}: {grade.grade_value}"
     
-    def _validate_teacher_authorization(self, email: str) -> Optional[Teacher]:
-        """Validate teacher is authorized. Returns Teacher or None."""
+    def _validate_teacher_authorization(self, email: str) -> Teacher:
+        """Validate teacher is authorized. Returns Teacher or raises AuthorizationError."""
         if email not in self._cache:
-            self._cache[email] = self.db.get_teacher_by_email(email)
-        return self._cache[email]
+            try:
+                self._cache[email] = self.db.get_teacher_by_email(email)
+            except NotFoundError:
+                raise AuthorizationError(f"Email {email} is not authorized to grade assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
+        teacher = self._cache[email]
+        if not teacher:
+            raise AuthorizationError(f"Email {email} is not authorized to grade assignments.", ErrorCodes.TEACHER_NOT_WHITELISTED)
+        return teacher

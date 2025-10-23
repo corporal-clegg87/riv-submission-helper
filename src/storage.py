@@ -1,6 +1,7 @@
 import json
 import uuid
 import os
+from .exceptions import NotFoundError, DatabaseError, ErrorCodes
 from .utils.database import DatabaseSession
 from typing import Optional, List
 from sqlalchemy import create_engine, text
@@ -260,11 +261,11 @@ class Database:
             )
             session.add(db_student)
 
-    def get_student_by_id(self, student_id: str) -> Optional[Student]:
+    def get_student_by_id(self, student_id: str) -> Student:
         with self.session_manager.get_readonly_session() as session:
             db_student = session.query(StudentDB).filter_by(student_id=student_id).first()
             if not db_student:
-                return None
+                raise NotFoundError(f"Student with ID '{student_id}' not found.", ErrorCodes.STUDENT_NOT_FOUND)
             return Student(
                 id=db_student.id,
                 student_id=db_student.student_id,
@@ -285,11 +286,11 @@ class Database:
             )
             session.add(db_teacher)
 
-    def get_teacher_by_email(self, email: str) -> Optional[Teacher]:
+    def get_teacher_by_email(self, email: str) -> Teacher:
         with self.session_manager.get_readonly_session() as session:
             db_teacher = session.query(TeacherDB).filter_by(email=email).first()
             if not db_teacher:
-                return None
+                raise NotFoundError(f"Teacher with email '{email}' not found.", ErrorCodes.TEACHER_NOT_FOUND)
             return Teacher(
                 id=db_teacher.id,
                 email=db_teacher.email,
@@ -311,11 +312,11 @@ class Database:
             )
             session.add(db_class)
 
-    def get_class_by_name(self, name: str) -> Optional[Class]:
+    def get_class_by_name(self, name: str) -> Class:
         with self.session_manager.get_readonly_session() as session:
             db_class = session.query(ClassDB).filter_by(name=name).first()
             if not db_class:
-                return None
+                raise NotFoundError(f"Class with name '{name}' not found.", ErrorCodes.CLASS_NOT_FOUND)
             return Class(
                 id=db_class.id,
                 term_id=db_class.term_id,

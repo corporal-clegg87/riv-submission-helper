@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Tuple
+from ..exceptions import ValidationError, NotFoundError, ErrorCodes
 from ..storage import Database
 from ..models import Submission, EmailMessage
 
@@ -15,31 +16,33 @@ class SubmissionService:
         assignment_code, student_id = submission_data
         
         # Find assignment
-        assignment = self.db.get_assignment_by_code(assignment_code)
-        if not assignment:
+        try:
+            assignment = self.db.get_assignment_by_code(assignment_code)
+        except NotFoundError as e:
             email_msg.parse_result = 'ASSIGNMENT_NOT_FOUND'
             self.db.save_email_message(email_msg)
-            return f"Assignment {assignment_code} not found."
+            return str(e)
         
         # Validate student exists
-        student = self.db.get_student_by_id(student_id)
-        if not student:
+        try:
+            student = self.db.get_student_by_id(student_id)
+        except NotFoundError as e:
             email_msg.parse_result = 'STUDENT_NOT_FOUND'
             self.db.save_email_message(email_msg)
-            return f"Student {student_id} not found."
+            return str(e)
         
         # Validate student is enrolled in the class
         if not self.db.is_student_enrolled_in_class(student_id, assignment.class_id):
             email_msg.parse_result = 'STUDENT_NOT_ENROLLED'
             self.db.save_email_message(email_msg)
-            return f"Student {student_id} is not enrolled in this class."
+            raise ValidationError(f"Student {student_id} is not enrolled in this class.", ErrorCodes.STUDENT_NOT_ENROLLED)
         
         # Check if already submitted
         existing = self.db.get_submission_by_assignment_and_student(assignment.id, student_id)
         if existing:
             email_msg.parse_result = 'DUPLICATE_SUBMISSION'
             self.db.save_email_message(email_msg)
-            return "Submission already received. Contact admin to request changes."
+            raise ValidationError("Submission already received. Contact admin to request changes.", ErrorCodes.DUPLICATE_SUBMISSION)
         
         # Determine if on-time (including grace period)
         now = datetime.utcnow()

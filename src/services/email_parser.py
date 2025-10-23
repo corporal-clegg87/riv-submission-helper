@@ -1,4 +1,5 @@
 from typing import Dict, Optional, Tuple
+from ..exceptions import ValidationError
 from ..parser import parse_assignment_email, parse_submission_email, parse_grade_email, parse_return_email
 
 class EmailParser:
@@ -6,19 +7,31 @@ class EmailParser:
     
     def parse_assignment(self, content: str, subject: str) -> Optional[Dict]:
         """Parse ASSIGN email and return assignment data or None if invalid."""
-        return parse_assignment_email(content, subject)
+        try:
+            return parse_assignment_email(content, subject)
+        except ValidationError:
+            return None
     
     def parse_submission(self, content: str, subject: str) -> Optional[Tuple[str, str]]:
         """Parse SUBMIT email and return (assignment_code, student_id) or None if invalid."""
-        return parse_submission_email(content, subject)
+        try:
+            return parse_submission_email(content, subject)
+        except ValidationError:
+            return None
     
     def parse_grade(self, content: str, subject: str) -> Optional[Dict]:
         """Parse GRADE email and return grade data or None if invalid."""
-        return parse_grade_email(content, subject)
+        try:
+            return parse_grade_email(content, subject)
+        except ValidationError:
+            return None
     
     def parse_return(self, content: str, subject: str) -> Optional[Tuple[str, str, Dict]]:
         """Parse RETURN email and return (assignment_code, student_id, grade_data) or None."""
-        return parse_return_email(content, subject)
+        try:
+            return parse_return_email(content, subject)
+        except ValidationError:
+            return None
     
     def parse_email(self, content: str, subject: str) -> Dict:
         """Parse email and return type and data."""
