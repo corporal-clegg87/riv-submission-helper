@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Dict, Tuple, Optional
-from ..exceptions import AuthorizationError, NotFoundError, ErrorCodes
+from ..exceptions import NotFoundError, ErrorCodes
 from ..storage import Database
 from ..models import Grade, EmailMessage, Teacher
 
