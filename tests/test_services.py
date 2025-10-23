@@ -143,8 +143,8 @@ class TestAssignmentService:
         assert "Assignment 'Test Assignment' created successfully" in response
         assert "ENG7-0115" in response
     
-    def test_create_assignment_unauthorized_teacher(self, test_database_with_data):
-        """Test assignment creation with unauthorized teacher."""
+    def test_create_assignment_any_teacher(self, test_database_with_data):
+        """Test assignment creation with any teacher (authorization removed)."""
         db, unique_suffix = test_database_with_data
         service = AssignmentService(db)
         
@@ -158,7 +158,7 @@ class TestAssignmentService:
         email_msg = EmailMessage(
             id=str(uuid.uuid4()),
             direction='IN',
-            from_email="unauthorized@test.com",
+            from_email="any_teacher@test.com",
             to_emails=["assignments@test.com"],
             subject="ASSIGN",
             message_id="msg-123",
@@ -166,7 +166,7 @@ class TestAssignmentService:
         )
         
         response = service.create_assignment(assignment_data, email_msg)
-        assert "not authorized" in response
+        assert "created successfully" in response
 
 class TestSubmissionService:
     """Test SubmissionService following Single Responsibility Principle."""

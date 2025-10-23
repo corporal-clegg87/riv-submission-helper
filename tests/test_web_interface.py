@@ -157,7 +157,7 @@ def test_process_assignment_with_validation():
     test_date = f"2025-{timestamp % 12 + 1:02d}-{timestamp % 28 + 1:02d}"
     response = client.post("/api/process-email", json={
             "subject": f"ASSIGN Test Assignment {unique_id}",
-            "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT\nInstructions: Complete problems 1-10",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {test_date} 23:59 CT\nInstructions: Complete problems 1-10",
             "from_email": "teacher@example.com",
             "to_email": "assignments@example.com",
             "message_id": f"test{unique_id}@example.com"
@@ -179,16 +179,16 @@ def test_process_submission_with_validation():
     # First create an assignment with unique class name
     client.post("/api/process-email", json={
             "subject": f"ASSIGN Test Assignment {unique_id}",
-            "body": f"Title: Math Homework {unique_id}\nClass: Math 8\nDeadline: {test_date} 23:59 CT",
+            "body": f"Title: Math Homework {unique_id}\nClass: Math 7\nDeadline: {test_date} 23:59 CT",
             "from_email": "teacher@example.com",
             "to_email": "assignments@example.com",
             "message_id": f"assign{unique_id}@example.com"
         }, auth=("admin", "admin"))
     
     # Then submit to it (assignment code will be unique based on class and date)
-    # The class name gets truncated to 8 chars, so Math 8 becomes MATH8
+    # The class name gets truncated to 8 chars, so Math 7 becomes MATH7
     date_code = test_date.replace("-", "")[4:]  # Extract MMDD from YYYY-MM-DD
-    class_code = "MATH8"
+    class_code = "MATH7"
     response = client.post("/api/process-email", json={
             "subject": f"SUBMIT {class_code}-{date_code}",
             "body": "StudentID: STU001",
@@ -233,18 +233,18 @@ def test_assignment_status_structure():
     # Create an assignment first
     client.post("/api/process-email", json={
             "subject": "ASSIGN Test Assignment",
-            "body": "Title: Math Homework\nClass: Math 8\nDeadline: 2025-01-20 23:59 CT",
+            "body": "Title: Math Homework\nClass: Math 7\nDeadline: 2025-01-20 23:59 CT",
             "from_email": "teacher@example.com",
             "to_email": "assignments@example.com",
             "message_id": "assign456@example.com"
         }, auth=("admin", "admin"))
     
-    response = client.get("/api/assignments/MATH8-0120/status", auth=("admin", "admin"))
+    response = client.get("/api/assignments/MATH7-0120/status", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     assert "assignment" in data
     assert "submissions" in data
-    assert data["assignment"]["code"] == "MATH8-0120"
+    assert data["assignment"]["code"] == "MATH7-0120"
     assert isinstance(data["submissions"], list)
 
 def test_xss_prevention():
