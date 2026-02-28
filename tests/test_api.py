@@ -177,3 +177,49 @@ def test_get_assignment_status():
     assert "assignment" in data
     assert "submissions" in data
     assert data["assignment"]["code"] == "MATH7-0120"
+
+def test_monitoring_metrics_authenticated():
+    """Test getting monitoring metrics with authentication."""
+    response = client.get("/api/monitoring/metrics", auth=("admin", "admin"))
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check response structure
+    assert "cloud_run" in data
+    assert "cloud_sql" in data
+    assert "application" in data
+    assert "status" in data
+    
+    # Check that all sections have required keys
+    assert "timestamp" in data["cloud_run"]
+    assert "timestamp" in data["cloud_sql"]
+    assert "timestamp" in data["application"]
+
+def test_monitoring_metrics_unauthenticated():
+    """Test that monitoring metrics endpoint requires authentication."""
+    response = client.get("/api/monitoring/metrics")
+    assert response.status_code == 401
+
+def test_monitoring_metrics_structure():
+    """Test that monitoring metrics response has expected structure."""
+    response = client.get("/api/monitoring/metrics", auth=("admin", "admin"))
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check cloud_run metrics structure
+    cloud_run = data["cloud_run"]
+    expected_cloud_run_keys = ["request_count", "avg_latency_ms", "error_rate", "active_instances", "timestamp"]
+    for key in expected_cloud_run_keys:
+        assert key in cloud_run
+    
+    # Check cloud_sql metrics structure
+    cloud_sql = data["cloud_sql"]
+    expected_cloud_sql_keys = ["active_connections", "cpu_utilization", "timestamp"]
+    for key in expected_cloud_sql_keys:
+        assert key in cloud_sql
+    
+    # Check application metrics structure
+    application = data["application"]
+    expected_application_keys = ["uptime_seconds", "environment", "timestamp"]
+    for key in expected_application_keys:
+        assert key in application

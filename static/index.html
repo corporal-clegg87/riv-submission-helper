@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assignment System - Test Interface</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -19,6 +20,7 @@
             <button class="tab-button" onclick="showTab('returnTab')">Return Grade</button>
             <button class="tab-button" onclick="showTab('statusTab')">Check Status</button>
             <button class="tab-button" onclick="showTab('allTab')">All Assignments</button>
+            <button class="tab-button" onclick="showTab('monitoringTab')">Monitoring</button>
         </div>
         
         <!-- Create Assignment Tab -->
@@ -104,6 +106,86 @@
             <h2>All Assignments</h2>
             <button onclick="loadAllAssignments()">Refresh List</button>
             <div id="allAssignments" class="result"></div>
+        </div>
+        
+        <!-- Monitoring Tab -->
+        <div id="monitoringTab" class="tab-content">
+            <h2>System Monitoring</h2>
+            <div class="monitoring-controls">
+                <button onclick="loadMonitoringData()">Refresh Metrics</button>
+                <span id="lastUpdate" class="last-update"></span>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Cloud Run Metrics</h3>
+                    <div id="cloudRunMetrics" class="metric-content">
+                        <div class="metric-item">
+                            <span class="metric-label">Request Count:</span>
+                            <span class="metric-value" id="requestCount">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Avg Latency:</span>
+                            <span class="metric-value" id="avgLatency">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Error Rate:</span>
+                            <span class="metric-value" id="errorRate">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Active Instances:</span>
+                            <span class="metric-value" id="activeInstances">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Cloud SQL Metrics</h3>
+                    <div id="cloudSqlMetrics" class="metric-content">
+                        <div class="metric-item">
+                            <span class="metric-label">Active Connections:</span>
+                            <span class="metric-value" id="activeConnections">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">CPU Utilization:</span>
+                            <span class="metric-value" id="cpuUtilization">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Application Status</h3>
+                    <div id="applicationMetrics" class="metric-content">
+                        <div class="metric-item">
+                            <span class="metric-label">Uptime:</span>
+                            <span class="metric-value" id="uptime">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Environment:</span>
+                            <span class="metric-value" id="environment">Loading...</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Status:</span>
+                            <span class="metric-value" id="status">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Request Rate Over Time</h3>
+                    <canvas id="requestRateChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Response Time Over Time</h3>
+                    <canvas id="responseTimeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Error Rate Over Time</h3>
+                    <canvas id="errorRateChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
     

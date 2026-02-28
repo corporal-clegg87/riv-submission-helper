@@ -19,6 +19,7 @@ from .processor import EmailProcessor
 from .models import Assignment, Submission
 from .gmail_client import GmailClient
 from .gmail_ingestion import GmailIngestionService
+from .services.monitoring_service import MonitoringService
 
 # Secret Manager imports
 try:
@@ -137,6 +138,9 @@ app.add_middleware(
 # Initialize database and processor
 db = Database()
 processor = EmailProcessor(db)
+
+# Initialize monitoring service
+monitoring_service = MonitoringService()
 
 # Initialize Gmail client and ingestion service (if credentials are available)
 gmail_client = None
@@ -358,6 +362,19 @@ async def health_check():
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail="Service unhealthy")
+
+@app.get("/api/monitoring/metrics")
+async def get_monitoring_metrics(current_user: str = Depends(get_current_user)):
+    """Get system monitoring metrics. Requires authentication."""
+    try:
+        metrics = monitoring_service.get_all_metrics()
+        return metrics
+    except Exception as e:
+        logger.error(f"Error fetching monitoring metrics: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch monitoring metrics"
+        )
 
 @app.get("/")
 async def serve_index(current_user: str = Depends(get_current_user)):

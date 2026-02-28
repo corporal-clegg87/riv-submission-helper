@@ -1,3 +1,6 @@
+# Secrets
+.secret_manager_credentials.txt
+
 # SSH Keys
 *.pem
 *.key

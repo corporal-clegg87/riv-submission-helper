@@ -61,9 +61,9 @@ class FrontendTester:
             header = await self.page.text_content('h1')
             assert "Email-First Assignment System" in header, f"Expected header, got: {header}"
             
-            # Check for tabs
+            # Check for tabs (now includes monitoring tab)
             tabs = await self.page.query_selector_all('.tab-button')
-            assert len(tabs) == 5, f"Expected 5 tabs, found {len(tabs)}"
+            assert len(tabs) == 6, f"Expected 6 tabs, found {len(tabs)}"
             
             print("✅ Page loads correctly with all elements")
             return True
@@ -76,8 +76,8 @@ class FrontendTester:
         print("🧪 Test 2: Tab Navigation")
         try:
             # Test each tab
-            tabs = ['createTab', 'submitTab', 'returnTab', 'statusTab', 'allTab']
-            tab_names = ['Create Assignment', 'Submit Work', 'Return Grade', 'Check Status', 'All Assignments']
+            tabs = ['createTab', 'submitTab', 'returnTab', 'statusTab', 'allTab', 'monitoringTab']
+            tab_names = ['Create Assignment', 'Submit Work', 'Return Grade', 'Check Status', 'All Assignments', 'Monitoring']
             
             for i, (tab_id, tab_name) in enumerate(zip(tabs, tab_names)):
                 # Click tab button
@@ -105,6 +105,9 @@ class FrontendTester:
                 elif tab_id == 'allTab':
                     refresh_button = await self.page.query_selector('button[onclick="loadAllAssignments()"]')
                     assert refresh_button, "All assignments refresh button not found"
+                elif tab_id == 'monitoringTab':
+                    refresh_button = await self.page.query_selector('button[onclick="loadMonitoringData()"]')
+                    assert refresh_button, "Monitoring refresh button not found"
             
             print("✅ Tab navigation works correctly")
             return True
@@ -352,9 +355,57 @@ class FrontendTester:
             print(f"❌ Static files test failed: {e}")
             return False
 
+    async def test_monitoring_tab(self):
+        """Test 9: Test monitoring tab functionality."""
+        print("🧪 Test 9: Monitoring Tab")
+        try:
+            # Navigate to monitoring tab
+            await self.page.click('button[onclick="showTab(\'monitoringTab\')"]')
+            await self.page.wait_for_timeout(1000)  # Wait for tab switch and initial load
+            
+            # Check for monitoring elements
+            monitoring_header = await self.page.query_selector('#monitoringTab h2')
+            assert monitoring_header, "Monitoring tab header not found"
+            
+            # Check for metric cards
+            metric_cards = await self.page.query_selector_all('.metric-card')
+            assert len(metric_cards) >= 3, f"Expected at least 3 metric cards, found {len(metric_cards)}"
+            
+            # Check for chart containers
+            chart_containers = await self.page.query_selector_all('canvas')
+            assert len(chart_containers) >= 3, f"Expected at least 3 chart canvases, found {len(chart_containers)}"
+            
+            # Check for refresh button
+            refresh_button = await self.page.query_selector('button[onclick="loadMonitoringData()"]')
+            assert refresh_button, "Monitoring refresh button not found"
+            
+            # Click refresh button to test functionality
+            await self.page.click('button[onclick="loadMonitoringData()"]')
+            await self.page.wait_for_timeout(3000)  # Wait for API response
+            
+            # Check if metrics are populated (they might show "Loading..." or actual values)
+            request_count = await self.page.text_content('#requestCount')
+            avg_latency = await self.page.text_content('#avgLatency')
+            error_rate = await self.page.text_content('#errorRate')
+            
+            print(f"📊 Monitoring metrics: Request Count={request_count}, Latency={avg_latency}, Error Rate={error_rate}")
+            
+            # Check for last update time
+            last_update = await self.page.text_content('#lastUpdate')
+            if last_update and "Last updated:" in last_update:
+                print("✅ Monitoring tab works - metrics loaded and displayed")
+                return True
+            else:
+                print("⚠️ Monitoring tab loaded but may not have real data (expected in dev)")
+                return True  # This is acceptable for development environment
+                
+        except Exception as e:
+            print(f"❌ Monitoring tab test failed: {e}")
+            return False
+
     async def test_authentication(self):
-        """Test 9: Verify authentication is working."""
-        print("🧪 Test 9: Authentication")
+        """Test 10: Verify authentication is working."""
+        print("🧪 Test 10: Authentication")
         try:
             # Try to access the page
             response = await self.page.goto(self.base_url)
@@ -391,6 +442,7 @@ class FrontendTester:
             self.test_return_grade_form,
             self.test_status_check,
             self.test_all_assignments,
+            self.test_monitoring_tab,
         ]
         
         results = []

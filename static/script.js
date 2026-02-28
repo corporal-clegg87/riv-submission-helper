@@ -314,6 +314,280 @@ function showResult(elementId, message, type) {
     element.className = `result ${type}`;
 }
 
+// Monitoring functionality
+let monitoringInterval = null;
+let requestRateChart = null;
+let responseTimeChart = null;
+let errorRateChart = null;
+
+// Load monitoring data
+async function loadMonitoringData() {
+    try {
+        const response = await fetch('/api/monitoring/metrics');
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayMetrics(data);
+            updateCharts(data);
+            updateLastUpdateTime();
+        } else {
+            showMonitoringError('Failed to load monitoring data');
+        }
+    } catch (error) {
+        console.error('Error loading monitoring data:', error);
+        showMonitoringError('Error loading monitoring data');
+    }
+}
+
+// Display metrics in the UI
+function displayMetrics(data) {
+    // Cloud Run metrics
+    const cloudRun = data.cloud_run || {};
+    document.getElementById('requestCount').textContent = cloudRun.request_count || 'N/A';
+    document.getElementById('avgLatency').textContent = cloudRun.avg_latency_ms ? `${cloudRun.avg_latency_ms.toFixed(2)}ms` : 'N/A';
+    document.getElementById('errorRate').textContent = cloudRun.error_rate ? `${cloudRun.error_rate.toFixed(2)}%` : 'N/A';
+    document.getElementById('activeInstances').textContent = cloudRun.active_instances || 'N/A';
+    
+    // Cloud SQL metrics
+    const cloudSql = data.cloud_sql || {};
+    document.getElementById('activeConnections').textContent = cloudSql.active_connections || 'N/A';
+    document.getElementById('cpuUtilization').textContent = cloudSql.cpu_utilization ? `${(cloudSql.cpu_utilization * 100).toFixed(1)}%` : 'N/A';
+    
+    // Application metrics
+    const application = data.application || {};
+    document.getElementById('uptime').textContent = application.uptime_seconds ? formatUptime(application.uptime_seconds) : 'N/A';
+    document.getElementById('environment').textContent = application.environment || 'N/A';
+    document.getElementById('status').textContent = data.status || 'N/A';
+}
+
+// Update charts with new data
+function updateCharts(data) {
+    const now = new Date();
+    const timeLabel = now.toLocaleTimeString();
+    
+    // Initialize charts if they don't exist
+    if (!requestRateChart) {
+        initializeCharts();
+    }
+    
+    // Update chart data
+    if (requestRateChart) {
+        requestRateChart.data.labels.push(timeLabel);
+        requestRateChart.data.datasets[0].data.push(data.cloud_run?.request_count || 0);
+        if (requestRateChart.data.labels.length > 20) {
+            requestRateChart.data.labels.shift();
+            requestRateChart.data.datasets[0].data.shift();
+        }
+        requestRateChart.update('none');
+    }
+    
+    if (responseTimeChart) {
+        responseTimeChart.data.labels.push(timeLabel);
+        responseTimeChart.data.datasets[0].data.push(data.cloud_run?.avg_latency_ms || 0);
+        if (responseTimeChart.data.labels.length > 20) {
+            responseTimeChart.data.labels.shift();
+            responseTimeChart.data.datasets[0].data.shift();
+        }
+        responseTimeChart.update('none');
+    }
+    
+    if (errorRateChart) {
+        errorRateChart.data.labels.push(timeLabel);
+        errorRateChart.data.datasets[0].data.push(data.cloud_run?.error_rate || 0);
+        if (errorRateChart.data.labels.length > 20) {
+            errorRateChart.data.labels.shift();
+            errorRateChart.data.datasets[0].data.shift();
+        }
+        errorRateChart.update('none');
+    }
+}
+
+// Initialize Chart.js charts
+function initializeCharts() {
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    };
+    
+    // Request Rate Chart
+    const requestRateCtx = document.getElementById('requestRateChart').getContext('2d');
+    requestRateChart = new Chart(requestRateCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Requests',
+                data: [],
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            ...chartOptions,
+            scales: {
+                ...chartOptions.scales,
+                y: {
+                    ...chartOptions.scales.y,
+                    title: {
+                        display: true,
+                        text: 'Requests per minute'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Response Time Chart
+    const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+    responseTimeChart = new Chart(responseTimeCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Response Time',
+                data: [],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            ...chartOptions,
+            scales: {
+                ...chartOptions.scales,
+                y: {
+                    ...chartOptions.scales.y,
+                    title: {
+                        display: true,
+                        text: 'Milliseconds'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Error Rate Chart
+    const errorRateCtx = document.getElementById('errorRateChart').getContext('2d');
+    errorRateChart = new Chart(errorRateCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Error Rate',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            ...chartOptions,
+            scales: {
+                ...chartOptions.scales,
+                y: {
+                    ...chartOptions.scales.y,
+                    title: {
+                        display: true,
+                        text: 'Percentage'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Start auto-refresh for monitoring
+function startMonitoringRefresh() {
+    if (monitoringInterval) {
+        clearInterval(monitoringInterval);
+    }
+    
+    // Load data immediately
+    loadMonitoringData();
+    
+    // Set up auto-refresh every 5 seconds
+    monitoringInterval = setInterval(loadMonitoringData, 5000);
+}
+
+// Stop auto-refresh
+function stopMonitoringRefresh() {
+    if (monitoringInterval) {
+        clearInterval(monitoringInterval);
+        monitoringInterval = null;
+    }
+}
+
+// Show monitoring error
+function showMonitoringError(message) {
+    document.getElementById('requestCount').textContent = 'Error';
+    document.getElementById('avgLatency').textContent = 'Error';
+    document.getElementById('errorRate').textContent = 'Error';
+    document.getElementById('activeInstances').textContent = 'Error';
+    document.getElementById('activeConnections').textContent = 'Error';
+    document.getElementById('cpuUtilization').textContent = 'Error';
+    document.getElementById('uptime').textContent = 'Error';
+    document.getElementById('environment').textContent = 'Error';
+    document.getElementById('status').textContent = 'Error';
+    
+    console.error('Monitoring error:', message);
+}
+
+// Update last update time
+function updateLastUpdateTime() {
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+}
+
+// Format uptime in human readable format
+function formatUptime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+    } else {
+        return `${secs}s`;
+    }
+}
+
+// Enhanced tab switching to handle monitoring
+function showTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName).classList.add('active');
+    document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+    
+    // Handle monitoring tab specific logic
+    if (tabName === 'monitoringTab') {
+        startMonitoringRefresh();
+    } else {
+        stopMonitoringRefresh();
+    }
+}
+
 // Load assignments on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadAllAssignments();
